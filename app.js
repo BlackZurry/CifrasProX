@@ -1092,10 +1092,10 @@ const app = {
         }
 
         card.innerHTML = `
-            ${actionsBtn}
             <div class="chord-name">${cleanName}</div>
             <div class="chord-svg-container">${svg}</div>
             ${navHtml}
+            ${actionsBtn}
         `;
         return card;
     },
