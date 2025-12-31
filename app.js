@@ -989,19 +989,36 @@ const app = {
         if (!input || !preview) return;
 
         let content = input.value;
-        // Sanitizar para evitar problemas de renderização básicos
+        // Sanitizar
         content = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-        // Loop Markers
-        content = content.replace(/\[\|(\d*)\|?\]/g, '<span style="color:var(--primary-color); font-size:0.8rem;">↺ Início Loop</span>');
-        content = content.replace(/\[\.\|(\d*)\|?\.\]/g, '<span style="color:#f59e0b; font-size:0.8rem;">↩ Fim Loop</span>');
+        // Loop Start Marker
+        content = content.replace(/\[\|(\d*)(?:\|(\d*))?(?:\|(\d*))?\|?\]/g, (match, d1, d2, d3) => {
+            const delayDesktop = (d1 !== undefined && d1 !== '') ? parseInt(d1) : -1;
+            const delayTablet = (d2 !== undefined && d2 !== '') ? parseInt(d2) : delayDesktop;
+            const delayMobile = (d3 !== undefined && d3 !== '') ? parseInt(d3) : delayTablet;
 
-        // Chords - Mesma lógica do loadCifra
+            // Visual cue for editor
+            const deskTxt = delayDesktop === -1 ? 'Imediato' : (delayDesktop === 0 ? 'Desativado' : delayDesktop + 's');
+            return `<div style="border-top: 1px dashed var(--primary-color); color:var(--primary-color); font-size:0.8rem; padding: 2px 0;">↺ Início Loop (${deskTxt})</div>`;
+        });
+
+        // Loop Trigger Marker
+        content = content.replace(/\[\.\|(\d*)(?:\|(\d*))?(?:\|(\d*))?\|?\.\]/g, (match, d1, d2, d3) => {
+            const delayDesktop = (d1 !== undefined && d1 !== '') ? parseInt(d1) : -1;
+            const delayTablet = (d2 !== undefined && d2 !== '') ? parseInt(d2) : delayDesktop;
+            const delayMobile = (d3 !== undefined && d3 !== '') ? parseInt(d3) : delayTablet;
+
+            const deskTxt = delayDesktop === -1 ? 'Imediato' : (delayDesktop === 0 ? 'Desativado' : delayDesktop + 's');
+            return `<div style="border-bottom: 1px solid #f59e0b; color:#f59e0b; font-size:0.8rem; padding: 2px 0; margin-bottom:10px;">↩ Fim Loop (${deskTxt})</div>`;
+        });
+
+        // Chords - Standard Regex (No Smart)
         const formatted = content.replace(/\[([^\]]+)\]/g, (match, chord) => {
             if (match.includes('Loop')) return match;
+            if (match.includes('<')) return match; // Already processed
             const cleanName = chord.replace(/[\[\]\*]/g, '');
-            // Usamos <b> com classe para consistência com o style.css
-            return `<b class="interactive-chord" style="color:var(--primary-color)">${cleanName}</b>`;
+            return `<b class="interactive-chord" style="color:var(--primary-color); cursor:pointer;">${cleanName}</b>`;
         });
 
         preview.innerHTML = formatted;
@@ -1402,10 +1419,16 @@ const app = {
                 if (delaySeconds === -1) delaySeconds = 0;
 
                 const execute = () => {
-                    start.scrollIntoView({ behavior: 'auto', block: 'start' });
                     let startDelay = getDelay(start);
-                    // Mesma lógica de validação para o start delay, embora start usually is just a marker
+
+                    if (startDelay === 0) {
+                        console.log('Start Loop disabled for this device (delay=0)');
+                        return; // Disabled, don't loop back
+                    }
+
                     if (startDelay === -1) startDelay = 0;
+
+                    start.scrollIntoView({ behavior: 'auto', block: 'start' });
 
                     if (startDelay > 0) {
                         app.startCountdown(startDelay, 'Reiniciando em', () => {

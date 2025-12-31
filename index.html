@@ -329,9 +329,8 @@
                         required placeholder="Cole a letra com os acordes entre colchetes, ex: [G] [Am]"
                         oninput="app.updateEditorPreview()" onscroll="app.syncEditorScroll()"></textarea>
 
-                    <!-- Coluna da Direita: Preview -->
-                    <div id="edit-preview" class="cifra-content" contenteditable="true" spellcheck="false"
-                        style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: white; padding: 1rem; overflow-y: auto; font-family: 'Roboto Mono', monospace; white-space: pre-wrap; position: relative;">
+                    <div id="edit-preview" class="cifra-content"
+                        style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: white; padding: 1rem; overflow-y: auto; font-family: inherit; white-space: pre-wrap; position: relative;">
                         <!-- O conteúdo renderizado vai aqui -->
                     </div>
                 </div>
@@ -417,8 +416,8 @@
             });
         }
     </script>
-    <script src="chords.js?v=19"></script>
-    <script src="app.js?v=19"></script>
+    <script src="chords.js?v=21"></script>
+    <script src="app.js?v=21"></script>
 </body>
 
 </html>
