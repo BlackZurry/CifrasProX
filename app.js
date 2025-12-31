@@ -1383,16 +1383,29 @@ const app = {
                 const isTablet = width > 600 && width <= 1024;
 
                 const getDelay = (el) => {
-                    if (isMobile) return parseInt(el.dataset.delayMobile || el.dataset.delay || 0);
-                    if (isTablet) return parseInt(el.dataset.delayTablet || el.dataset.delay || 0);
-                    return parseInt(el.dataset.delay || 0);
+                    // Default to -1 (Immediate) if attribute missing or not set
+                    // But here we rely on data attributes populated by loadCifra which uses -1 as default
+                    if (isMobile) return parseInt(el.dataset.delayMobile || el.dataset.delay || -1);
+                    if (isTablet) return parseInt(el.dataset.delayTablet || el.dataset.delay || -1);
+                    return parseInt(el.dataset.delay || -1);
                 };
 
-                const delaySeconds = getDelay(trigger);
+                let delaySeconds = getDelay(trigger);
+
+                // FEATURE: Se o delay for 0, o loop está DESATIVADO para este dispositivo.
+                if (delaySeconds === 0) {
+                    console.log('Loop desativado para este dispositivo (delay=0)');
+                    return;
+                }
+
+                // Se for -1 (Default), tratamos como 0 (Imediato)
+                if (delaySeconds === -1) delaySeconds = 0;
 
                 const execute = () => {
                     start.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    const startDelay = getDelay(start);
+                    let startDelay = getDelay(start);
+                    // Mesma lógica de validação para o start delay, embora start usually is just a marker
+                    if (startDelay === -1) startDelay = 0;
 
                     if (startDelay > 0) {
                         app.startCountdown(startDelay, 'Reiniciando em', () => {
