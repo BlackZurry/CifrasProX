@@ -662,9 +662,9 @@ textarea {
 }
 
 #loop-countdown {
-    position: absolute;
-    bottom: 70px;
-    right: -5px;
+    position: fixed;
+    bottom: 85px;
+    right: 20px;
     white-space: nowrap;
     background: #1e293b;
     color: white;

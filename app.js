@@ -1295,16 +1295,18 @@ const app = {
             // Auto-scroll to Strumming/Content if at top
             const diff = window.scrollY; // Current scroll
             if (diff < 100) { // Only if user is at the very top
-                const strum = document.getElementById('view-strumming-container');
-                const content = document.getElementById('view-content');
-                const target = (strum && strum.style.display !== 'none') ? strum : content;
+                setTimeout(() => {
+                    const strum = document.getElementById('view-strumming-container');
+                    const content = document.getElementById('view-content');
+                    const target = (strum && strum.style.display !== 'none') ? strum : content;
 
-                if (target) {
-                    // Scroll com offset para não colar no header
-                    const headerHeight = document.querySelector('header').offsetHeight || 80;
-                    const targetPos = target.offsetTop - headerHeight - 20;
-                    window.scrollTo({ top: targetPos, behavior: 'smooth' });
-                }
+                    if (target) {
+                        // Scroll com offset para não colar no header
+                        const headerHeight = document.querySelector('header').offsetHeight || 80;
+                        const targetPos = target.offsetTop - headerHeight - 20;
+                        window.scrollTo({ top: targetPos, behavior: 'smooth' });
+                    }
+                }, 150); // Delay to ensure mobile browser is ready
             }
 
             requestAnimationFrame(app.scrollLoop);

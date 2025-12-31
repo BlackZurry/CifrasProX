@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CifraProX - Suas Cifras</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a2e25">
@@ -164,12 +164,12 @@
             <div class="cifra-content" id="view-content"></div>
 
             <!-- Autoscroll Controls -->
+            <div id="loop-countdown" style="display:none;">
+                Voltando em <span id="loop-seconds">0</span>s...
+            </div>
+
             <div id="scroll-controls"
                 style="position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; z-index: 100;">
-
-                <div id="loop-countdown" style="display:none;">
-                    Voltando em <span id="loop-seconds">0</span>s...
-                </div>
 
                 <button class="btn btn-primary" id="btn-scroll-toggle" onclick="app.toggleScroll()"
                     style="width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0;">
@@ -384,8 +384,8 @@
     <!-- Container para Modais Premium -->
     <div id="modal-root"></div>
 
-    <script src="chords.js?v=9"></script>
-    <script src="app.js?v=9"></script>
+    <script src="chords.js?v=10"></script>
+    <script src="app.js?v=10"></script>
 </body>
 
 </html>
