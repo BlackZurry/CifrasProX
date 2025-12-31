@@ -517,14 +517,30 @@ const app = {
             contentHtml = contentHtml.replace(/\r\n/g, '\n');
 
             // Loop Markers
-            contentHtml = contentHtml.replace(/\[\|(\d*)\|?\]/g, (match, seconds) => {
-                const delay = seconds ? parseInt(seconds) : 0;
-                return `<div id="loop-start" data-delay="${delay}" style="height: 1px; width: 100%; opacity: 0; pointer-events: none; margin: 0;"></div>`;
+            // Loop Markers - Syntax: [|desktop|tablet|mobile|] or [|time|]
+            contentHtml = contentHtml.replace(/\[\|(\d*)(?:\|(\d*))?(?:\|(\d*))?\|?\]/g, (match, d1, d2, d3) => {
+                const delayDesktop = d1 ? parseInt(d1) : 0;
+                const delayTablet = d2 ? parseInt(d2) : delayDesktop;
+                const delayMobile = d3 ? parseInt(d3) : delayTablet;
+
+                return `<div id="loop-start" 
+                    data-delay="${delayDesktop}" 
+                    data-delay-tablet="${delayTablet}" 
+                    data-delay-mobile="${delayMobile}" 
+                    style="height: 1px; width: 100%; opacity: 0; pointer-events: none; margin: 0;"></div>`;
             });
 
-            contentHtml = contentHtml.replace(/\[\.\|(\d*)\|?\.\]/g, (match, seconds) => {
-                const delay = seconds ? parseInt(seconds) : 0;
-                return `<div id="loop-trigger" data-delay="${delay}" style="height: 1px; width: 100%; opacity: 0; pointer-events: none; margin: 0;"></div>`;
+            // Loop Trigger - Syntax: [.|desktop|tablet|mobile|.] or [.|time|.]
+            contentHtml = contentHtml.replace(/\[\.\|(\d*)(?:\|(\d*))?(?:\|(\d*))?\|?\.\]/g, (match, d1, d2, d3) => {
+                const delayDesktop = d1 ? parseInt(d1) : 0;
+                const delayTablet = d2 ? parseInt(d2) : delayDesktop;
+                const delayMobile = d3 ? parseInt(d3) : delayTablet;
+
+                return `<div id="loop-trigger" 
+                    data-delay="${delayDesktop}" 
+                    data-delay-tablet="${delayTablet}" 
+                    data-delay-mobile="${delayMobile}" 
+                    style="height: 1px; width: 100%; opacity: 0; pointer-events: none; margin: 0;"></div>`;
             });
 
             // Chords in content
@@ -1352,16 +1368,32 @@ const app = {
     checkLoop: () => {
         const trigger = document.getElementById('loop-trigger');
         const start = document.getElementById('loop-start');
+
         if (trigger && start && !app.state.loopExecuted) {
             const rect = trigger.getBoundingClientRect();
+
+            // Trigger loop if visible
             if (rect.top < window.innerHeight) {
                 console.log('Detectado fim de loop...');
                 app.state.loopExecuted = true;
-                const delaySeconds = parseInt(trigger.dataset.delay || 0);
+
+                // Determine appropriate delay based on device width
+                const width = window.innerWidth;
+                const isMobile = width <= 600;
+                const isTablet = width > 600 && width <= 1024;
+
+                const getDelay = (el) => {
+                    if (isMobile) return parseInt(el.dataset.delayMobile || el.dataset.delay || 0);
+                    if (isTablet) return parseInt(el.dataset.delayTablet || el.dataset.delay || 0);
+                    return parseInt(el.dataset.delay || 0);
+                };
+
+                const delaySeconds = getDelay(trigger);
 
                 const execute = () => {
                     start.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    const startDelay = parseInt(start.dataset.delay || 0);
+                    const startDelay = getDelay(start);
+
                     if (startDelay > 0) {
                         app.startCountdown(startDelay, 'Reiniciando em', () => {
                             app.scrollState.active = true;
