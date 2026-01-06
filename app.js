@@ -483,7 +483,7 @@ const app = {
         if (clean.length > 10 || clean.includes(' ')) return false;
 
         // Padrão básico de acorde (Começa com A-G)
-        return /^[A-G]/.test(clean);
+        return /^[A-Ga-g]/.test(clean);
     },
 
     loadCifra: async (id) => {
