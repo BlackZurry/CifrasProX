@@ -32,6 +32,60 @@
     --glass-border: rgba(255, 255, 255, 0.3);
 }
 
+body.dark-mode {
+    --bg-color: #0f172a;
+    /* Slate 900 */
+    --bg-header: #020617;
+    /* Slate 950 */
+    --card-bg: #1e293b;
+    /* Slate 800 */
+    --text-color: #f1f5f9;
+    /* Slate 100 */
+    --text-muted: #94a3b8;
+    /* Slate 400 */
+    --border-color: #334155;
+    /* Slate 700 */
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-border: rgba(51, 65, 85, 0.5);
+    --chord-color: #34d399;
+    /* Emerald 400 */
+    --input-bg: #111827;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .btn-outline {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .genre-icon-bg {
+    opacity: 0.25;
+    filter: invert(1) brightness(0.9);
+}
+
+body.dark-mode .btn-chord-action {
+    background-color: #f8fafc;
+    /* Keep light for contrast */
+    color: #0f172a;
+}
+
+body.dark-mode .btn-icon {
+    background-color: #f8fafc;
+}
+
+body.dark-mode #edit-preview {
+    background-color: var(--card-bg) !important;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -46,6 +100,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 header {
@@ -98,6 +153,30 @@ nav {
 .nav-links {
     display: flex;
     gap: 1.5rem;
+    align-items: center;
+}
+
+.nav-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.btn-theme {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.btn-theme:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .nav-link {
@@ -168,6 +247,16 @@ nav {
 .btn-outline:hover {
     border-color: var(--text-muted);
     background-color: var(--card-bg);
+}
+
+.btn-small {
+    padding: 3px 10px !important;
+    font-size: 0.75rem !important;
+    height: auto !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    min-height: unset !important;
+    gap: 4px !important;
 }
 
 main {
@@ -948,8 +1037,53 @@ textarea {
     color: var(--text-color);
     width: 100%;
     margin-bottom: 2rem;
-    overflow-x: auto;
-    /* Fallback para evitar quebras se a palavra for muito longa */
+}
+
+@media print {
+    body {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    header,
+    .no-print,
+    #scroll-controls,
+    #setlist-navigator,
+    #theme-toggle,
+    .btn-theme,
+    .cifra-visual-actions {
+        display: none !important;
+    }
+
+    .container {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    #app {
+        padding: 0 !important;
+    }
+
+    .cifra-content {
+        font-size: 16px !important;
+        color: var(--text-color) !important;
+    }
+
+    .chord-card {
+        break-inside: avoid;
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    /* Preserve colors for chord drawings */
+    svg {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }
 
 /* Strumming Editor Focus */

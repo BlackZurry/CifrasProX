@@ -26,8 +26,29 @@
         <nav>
             <a href="javascript:void(0)" class="logo" onclick="app.navigate('home')">CifraPro<span
                     class="metallic-x">X</span></a>
-            <div class="nav-links" id="nav-links">
-                <span style="color:white">Carregando menu...</span>
+            <div class="nav-container">
+                <button id="theme-toggle" class="btn-theme" onclick="app.toggleTheme()" title="Alternar Tema">
+                    <svg id="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        style="display:none;">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 3v1"></path>
+                        <path d="M12 20v1"></path>
+                        <path d="m5.1 5.1 1 1"></path>
+                        <path d="m16.9 16.9 1 1"></path>
+                        <path d="M3 12h1"></path>
+                        <path d="M20 12h1"></path>
+                        <path d="m6.1 17.9-1 1"></path>
+                        <path d="m18.9 6.1-1 1"></path>
+                    </svg>
+                    <svg id="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6.36 6.36 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                    </svg>
+                </button>
+                <div class="nav-links" id="nav-links">
+                    <span style="color:white">Carregando menu...</span>
+                </div>
             </div>
         </nav>
     </header>
@@ -143,17 +164,52 @@
                         Artista</p>
                 </div>
                 <div id="cifra-mode-toggle" class="mode-toggle-container" style="display:none;">
-                    <button class="btn-mode active" onclick="app.setContentView('lyrics')" id="btn-mode-lyrics">Letra</button>
+                    <button class="btn-mode active" onclick="app.setContentView('lyrics')"
+                        id="btn-mode-lyrics">Letra</button>
                     <button class="btn-mode" onclick="app.setContentView('tabs')" id="btn-mode-tabs">Tablatura</button>
+                </div>
+                <!-- Metronome Visual Indicator -->
+                <div id="metronome-display"
+                    style="display:none; align-items: center; gap: 8px; background: var(--card-bg); padding: 8px 12px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                    <div id="metronome-dot"
+                        style="width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); transition: background 0.1s;">
+                    </div>
+                    <span id="metronome-bpm-label"
+                        style="font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums;">BPM: --</span>
                 </div>
             </div>
 
+
+
             <div id="view-meta"
-                style="font-size: 0.9rem; color: var(--text-muted); display: flex; gap: 1rem; margin-bottom: 2rem;">
+                style="font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
                 <span id="view-genre"
                     style="display:none; background: #e0f2f1; color: #004d40; padding: 2px 8px; border-radius: 4px; font-weight: 500;"></span>
                 <span id="view-capo"
                     style="display:none; background: #f3e5f5; color: #4a148c; padding: 2px 8px; border-radius: 4px; font-weight: 500;"></span>
+
+                <div class="cifra-top-actions no-print" style="display:flex; gap: 0.5rem; align-items: center;">
+                    <button id="btn-youtube-view" class="btn btn-outline btn-small"
+                        style="display:none; align-items:center; gap: 4px;" onclick="app.openYouTube()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+                            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+                        </svg>
+                        YouTube
+                    </button>
+                    <button class="btn btn-outline btn-small" onclick="window.print()"
+                        style="display:flex; align-items:center; gap: 4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9" />
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                            <rect x="6" y="14" width="12" height="8" />
+                        </svg>
+                        Imprimir
+                    </button>
+                </div>
             </div>
 
             <!-- Chords Gallery -->
@@ -170,7 +226,8 @@
             </div>
 
             <div class="cifra-content" id="view-content" style="font-family: monospace; font-size: 18px;"></div>
-            <div class="cifra-content hidden" id="view-tabs" style="font-family: monospace; font-size: 18px; white-space: pre; overflow-x: auto;"></div>
+            <div class="cifra-content hidden" id="view-tabs"
+                style="font-family: monospace; font-size: 18px; white-space: pre; overflow-x: auto;"></div>
 
             <!-- Autoscroll Controls -->
             <div id="loop-countdown" style="display:none;">
@@ -235,7 +292,7 @@
                 </label>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                 <div class="input-group">
                     <label>Tom / Capo</label>
                     <select name="capo" id="edit-capo" style="width:100%; padding:0.5rem;">
@@ -260,6 +317,16 @@
                         <option value="MPB">MPB</option>
                         <option value="Acústico">Acústico</option>
                     </select>
+                </div>
+                <div class="input-group">
+                    <label>BPM (Metrônomo)</label>
+                    <input type="number" name="bpm" id="edit-bpm" min="30" max="300" placeholder="Ex: 120"
+                        style="width:100%;">
+                </div>
+                <div class="input-group">
+                    <label>YouTube (URL de Referência)</label>
+                    <input type="url" name="youtube" id="edit-youtube" placeholder="https://youtube.com/watch?v=..."
+                        style="width:100%;">
                 </div>
             </div>
 
@@ -309,7 +376,7 @@
                 <input type="hidden" name="strumming" id="edit-strumming">
                 <!-- Visual preview in editor -->
                 <div id="edit-strumming-preview" tabindex="0" onkeydown="app.handleStrumInput(event)"
-                    style="min-height: 50px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: text; outline: none;">
+                    style="min-height: 50px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: text; outline: none;">
                     <span style="color: var(--text-muted); font-size: 0.9rem; pointer-events: none;">Toque aqui para
                         editar (Espaço ou Backspace)...</span>
                 </div>
@@ -347,14 +414,14 @@
                         oninput="app.updateEditorPreview()" onscroll="app.syncEditorScroll()"></textarea>
 
                     <div id="edit-preview" class="cifra-content"
-                        style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: white; padding: 1rem; overflow-y: auto; font-family: monospace; font-size: 15px; white-space: pre-wrap; position: relative;">
+                        style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); padding: 1rem; overflow-y: auto; font-family: monospace; font-size: 15px; white-space: pre-wrap; position: relative;">
                         <!-- O conteúdo renderizado vai aqui -->
                     </div>
                 </div>
 
                 <div class="tabs-editor-container" style="margin-top: 2rem;">
                     <label>Solo / Tablatura / Dedilhado</label>
-                    <textarea name="tabs" id="edit-tabs" 
+                    <textarea name="tabs" id="edit-tabs"
                         style="width: 100%; height: 200px; resize: vertical; font-family: monospace; font-size: 15px; line-height: 1.2; white-space: pre; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;"
                         placeholder="Cole aqui solos, tablaturas ou orientações extras..."></textarea>
                 </div>

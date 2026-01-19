@@ -6,7 +6,8 @@ const app = {
         setlists: [],
         currentSetlist: null,
         currentSetlistIndex: -1,
-        unsubs: { cifras: null, setlists: null } // Control for listeners
+        unsubs: { cifras: null, setlists: null }, // Control for listeners
+        metronome: { interval: null, bpm: 0, active: false }
     },
 
     // --- CONFIGURAÇÃO DO FIREBASE ---
@@ -35,6 +36,13 @@ const app = {
             }
             app.db = firebase.firestore();
             app.auth = firebase.auth();
+
+            // Initialize Theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                app.updateThemeIcons();
+            }
 
             // Load custom chords on startup
             await app.loadCustomChords();
@@ -155,6 +163,22 @@ const app = {
             app.loadSetlists();
         } else if (view === 'login') {
             // No specific logic needed, form is in template
+        }
+    },
+
+    toggleTheme: () => {
+        const isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        app.updateThemeIcons();
+    },
+
+    updateThemeIcons: () => {
+        const isDark = document.body.classList.contains('dark-mode');
+        const sun = document.getElementById('theme-icon-sun');
+        const moon = document.getElementById('theme-icon-moon');
+        if (sun && moon) {
+            sun.style.display = isDark ? 'block' : 'none';
+            moon.style.display = isDark ? 'none' : 'block';
         }
     },
 
@@ -498,6 +522,26 @@ const app = {
             }
 
             const data = { id: doc.id, ...doc.data() };
+
+            // --- Metronome Setup ---
+            app.stopMetronome();
+            if (data.bpm) {
+                app.state.metronome.bpm = parseInt(data.bpm);
+                document.getElementById('metronome-bpm-label').innerText = `BPM: ${data.bpm}`;
+                document.getElementById('metronome-display').style.display = 'flex';
+                app.startMetronome();
+            } else {
+                document.getElementById('metronome-display').style.display = 'none';
+            }
+
+            // --- YouTube Setup ---
+            const btnYoutube = document.getElementById('btn-youtube-view');
+            if (data.youtube) {
+                btnYoutube.style.display = 'flex';
+                btnYoutube.onclick = () => window.open(data.youtube, '_blank');
+            } else {
+                btnYoutube.style.display = 'none';
+            }
             // Populate logic same as before...
 
             app.state.currentCifra = data;
@@ -621,6 +665,35 @@ const app = {
         }
     },
 
+    startMetronome: () => {
+        const bpm = app.state.metronome.bpm;
+        if (!bpm || bpm <= 0) return;
+
+        app.stopMetronome();
+        const ms = (60 / bpm) * 1000;
+        const dot = document.getElementById('metronome-dot');
+
+        app.state.metronome.active = true;
+        app.state.metronome.interval = setInterval(() => {
+            if (dot) {
+                dot.style.background = 'var(--primary-color)';
+                dot.style.transform = 'scale(1.3)';
+                setTimeout(() => {
+                    dot.style.background = 'var(--text-muted)';
+                    dot.style.transform = 'scale(1)';
+                }, 100);
+            }
+        }, ms);
+    },
+
+    stopMetronome: () => {
+        if (app.state.metronome.interval) {
+            clearInterval(app.state.metronome.interval);
+            app.state.metronome.interval = null;
+        }
+        app.state.metronome.active = false;
+    },
+
 
 
     autoWrapChords: () => {
@@ -696,6 +769,8 @@ const app = {
         // Ensure proper types
         if (data.scrollSpeed) data.scrollSpeed = parseInt(data.scrollSpeed);
         if (data.scrollSpeedMobile) data.scrollSpeedMobile = parseInt(data.scrollSpeedMobile);
+        if (data.bpm) data.bpm = parseInt(data.bpm);
+        else data.bpm = null;
 
         const id = data.id; // Empty only if new
 
@@ -1020,6 +1095,8 @@ const app = {
         document.getElementById('edit-scrollSpeedMobile').value = cifra.scrollSpeedMobile || cifra.scrollSpeed || '';
         document.getElementById('edit-capo').value = cifra.capo || '';
         document.getElementById('edit-genre').value = cifra.genre || '';
+        document.getElementById('edit-bpm').value = cifra.bpm || '';
+        document.getElementById('edit-youtube').value = cifra.youtube || '';
         const strum = cifra.strumming || '';
         document.getElementById('edit-strumming').value = strum;
         document.getElementById('edit-ready').checked = !!cifra.ready;
