@@ -160,9 +160,6 @@ nav {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    min-width: 0;
-    flex: 1;
-    justify-content: flex-end;
 }
 
 .btn-theme {
@@ -698,78 +695,72 @@ textarea {
     }
 
     nav {
-        gap: 0.5rem;
-        flex-wrap: nowrap;
+        gap: 0.8rem;
     }
 
     .logo {
-        font-size: 1.3rem;
+        font-size: 1.4rem;
         flex-shrink: 0;
     }
 
     .nav-container {
-        gap: 0.5rem;
+        gap: 0.8rem;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .nav-links {
-        gap: 1rem;
+        gap: 1.2rem;
         overflow-x: auto;
         padding: 4px 0;
-        mask-image: linear-gradient(to right, black 85%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
         scrollbar-width: none;
-        /* Firefox */
         -ms-overflow-style: none;
-        /* IE/Edge */
+        display: flex;
+        align-items: center;
     }
 
     .nav-links::-webkit-scrollbar {
         display: none;
-        /* Chrome/Safari */
     }
 
     .nav-link {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         flex-shrink: 0;
+        white-space: nowrap;
     }
 
     main {
-        padding: 1rem;
+        padding: 1.5rem 1rem;
     }
 
     .actions {
         flex-direction: column;
-        align-items: stretch !important;
         gap: 1rem;
-        position: relative;
     }
 
     .filters-container {
-        flex-direction: column;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
         width: 100%;
-        gap: 0.6rem;
     }
 
     .search-box {
+        flex: 1 1 100%;
         max-width: none;
-        width: 100%;
     }
 
     .filter-select {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
     }
 
     .btn-create {
         margin-left: 0 !important;
-        width: 100%;
-        justify-content: center;
-        order: -1;
-        /* Place "+ Nova" at the top or bottom depending on user preference, here top of action bar */
-        margin-bottom: 0.5rem;
-    }
-
-    .cifra-grid {
-        grid-template-columns: 1fr;
+        width: auto;
+        padding: 0.6rem 1rem;
+        flex: 0 0 auto;
     }
 }
 
