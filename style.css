@@ -1255,9 +1255,11 @@ textarea {
     .home-controls {
         display: grid !important;
         grid-template-columns: 1fr auto !important;
-        grid-template-rows: auto auto !important;
+        grid-template-areas:
+            "search create"
+            "filters create" !important;
         gap: 0.8rem !important;
-        align-items: stretch !important;
+        align-items: center !important;
     }
 
     .filters-container {
@@ -1265,14 +1267,12 @@ textarea {
     }
 
     .search-box {
-        grid-column: 1;
-        grid-row: 1;
+        grid-area: search !important;
         width: 100% !important;
     }
 
     .filter-selectors {
-        grid-column: 1;
-        grid-row: 2;
+        grid-area: filters !important;
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
@@ -1285,16 +1285,16 @@ textarea {
         flex: 1 1 0 !important;
         width: 0 !important;
         min-width: 0 !important;
-        padding: 0.6rem 0.5rem !important;
+        padding: 0.6rem 0.8rem !important;
         font-size: 0.85rem !important;
+        text-overflow: ellipsis;
     }
 
     .btn-create {
-        grid-column: 2 !important;
-        grid-row: 1 / span 2 !important;
+        grid-area: create !important;
         margin: 0 !important;
         padding: 0 0.8rem !important;
-        height: 34px !important;
+        height: 48px !important;
         font-size: 0.75rem !important;
         align-self: center !important;
         display: flex !important;
