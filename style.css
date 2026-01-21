@@ -1258,7 +1258,8 @@ textarea {
         grid-template-areas:
             "search create"
             "filters create" !important;
-        gap: 0.8rem !important;
+        gap: 0.6rem !important;
+        /* Slightly smaller gap to save space */
         align-items: center !important;
     }
 
@@ -1276,33 +1277,52 @@ textarea {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
-        gap: 0.8rem !important;
+        gap: 0.5rem !important;
+        /* Smaller gap for mobile filters */
         width: 100% !important;
         align-items: center;
+        min-width: 0;
     }
 
     .filter-select {
-        flex: 1 1 0 !important;
-        width: 0 !important;
+        flex: 1 !important;
         min-width: 0 !important;
-        padding: 0.6rem 0.8rem !important;
-        font-size: 0.85rem !important;
+        padding: 0.6rem 0.4rem !important;
+        /* Reduced horizontal padding */
+        font-size: 0.8rem !important;
+        /* Slightly smaller font to fit text */
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .btn-create {
         grid-area: create !important;
         margin: 0 !important;
         padding: 0 0.8rem !important;
-        height: 48px !important;
+        height: 42px !important;
+        /* Slightly taller for better 'between' look */
         font-size: 0.75rem !important;
         align-self: center !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         white-space: nowrap !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         min-height: unset !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Ensure nav items don't overlap */
+    .nav-container {
+        gap: 0.5rem !important;
+    }
+
+    .nav-links {
+        gap: 0.5rem !important;
+    }
+
+    .logo {
+        margin-right: 0.5rem !important;
     }
 
     .cifra-grid {
