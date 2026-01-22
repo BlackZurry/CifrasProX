@@ -681,7 +681,6 @@ const app = {
             } else {
                 btnTraining.style.display = 'none';
             }
-            // Populate logic same as before...
 
             app.state.currentCifra = data;
             document.getElementById('view-title').innerText = data.title;
