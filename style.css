@@ -1222,144 +1222,7 @@ textarea {
 }
 
 /* Mobile Adjustments (Robust) */
-@media screen and (max-width: 850px) {
 
-    .home-controls {
-        display: grid !important;
-        grid-template-columns: 1fr auto !important;
-        grid-template-rows: auto auto !important;
-        gap: 0.6rem !important;
-        align-items: center !important;
-    }
-
-    .search-box {
-        grid-column: 1 !important;
-        grid-row: 1 !important;
-        width: 100% !important;
-    }
-
-    .filters-container {
-        grid-column: 1 !important;
-        grid-row: 2 !important;
-        display: flex !important;
-        gap: 0.5rem !important;
-        width: 100% !important;
-    }
-
-    .filter-selectors {
-        display: flex !important;
-        gap: 0.5rem !important;
-        width: 100% !important;
-    }
-
-    .filter-select {
-        flex: 1 !important;
-        font-size: 0.75rem !important;
-        padding: 0.6rem 0.5rem !important;
-    }
-
-    .btn-create {
-        grid-column: 2 !important;
-        grid-row: 1 / span 2 !important;
-        height: 44px !important;
-        font-size: 0.75rem !important;
-        white-space: nowrap !important;
-        margin: 0 !important;
-        padding: 0 0.6rem !important;
-        align-self: center !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-        min-height: unset !important;
-    }
-
-    .nav-container {
-        gap: 0.4rem !important;
-        flex: 1;
-        justify-content: flex-end;
-    }
-
-    .nav-links {
-        gap: 0.4rem !important;
-    }
-
-    .btn-theme {
-        margin-right: 0.2rem !important;
-        padding: 4px !important;
-    }
-
-    .cifra-grid {
-        grid-template-columns: 1fr !important;
-    }
-
-    /* Editor Mobile Improvements */
-    .form-grid {
-        display: grid !important;
-        grid-template-columns: 1fr !important;
-        gap: 1.2rem !important;
-        width: 100% !important;
-    }
-
-    .form-grid .input-group {
-        width: 100% !important;
-    }
-
-    .form-grid-2col {
-        grid-template-columns: 1fr !important;
-        gap: 1.2rem !important;
-    }
-
-    .strumming-controls {
-        gap: 0.6rem !important;
-        justify-content: flex-start !important;
-    }
-
-    .strumming-controls .btn {
-        min-width: 48px !important;
-        height: 48px !important;
-        padding: 0 !important;
-        flex: 0 0 auto !important;
-    }
-
-    .strumming-controls .btn-icon img {
-        width: 28px !important;
-        height: 28px !important;
-    }
-
-    .split-headers {
-        grid-template-columns: 1fr !important;
-        gap: 0.5rem !important;
-    }
-
-    .split-headers>div:last-child {
-        display: none !important;
-        /* Hide "Pré-visualização" label on mobile as it's stacked */
-    }
-
-    .split-editor-container {
-        grid-template-columns: 1fr !important;
-        height: auto !important;
-        min-height: 80vh !important;
-        gap: 1.5rem !important;
-    }
-
-    #edit-content {
-        min-height: 40vh !important;
-    }
-
-    #edit-preview {
-        min-height: 40vh !important;
-    }
-
-    .input-group input,
-    .input-group select {
-        font-size: 16px !important;
-        /* Prevent auto-zoom on iOS */
-        padding: 0.8rem !important;
-    }
-}
 
 /* Base classes for Editor (Desktop) */
 .form-grid {
@@ -1557,7 +1420,155 @@ body.dark-mode .music-player-modal {
     color: white;
 }
 
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 850px) {
+
+    .home-controls {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-rows: auto auto !important;
+        gap: 0.6rem !important;
+        align-items: center !important;
+    }
+
+    .search-box {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: 100% !important;
+    }
+
+    .filters-container {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+        display: flex !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
+    }
+
+    .filter-selectors {
+        display: flex !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
+    }
+
+    .filter-select {
+        flex: 1 !important;
+        font-size: 0.75rem !important;
+        padding: 0.6rem 0.5rem !important;
+    }
+
+    .btn-create {
+        grid-column: 2 !important;
+        grid-row: 1 / span 2 !important;
+        height: 44px !important;
+        font-size: 0.75rem !important;
+        white-space: nowrap !important;
+        margin: 0 !important;
+        padding: 0 0.6rem !important;
+        align-self: center !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        min-height: unset !important;
+    }
+
+    .nav-container {
+        gap: 0.4rem !important;
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    .nav-links {
+        gap: 0.4rem !important;
+    }
+
+    .btn-theme {
+        margin-right: 0.2rem !important;
+        padding: 4px !important;
+    }
+
+    .cifra-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Editor Mobile Improvements */
+    .form-grid {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .form-grid .input-group {
+        width: 100% !important;
+        margin-bottom: 1.2rem !important;
+    }
+
+    .form-grid-2col {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .form-grid-2col .input-group {
+        width: 100% !important;
+        margin-bottom: 1.2rem !important;
+    }
+
+    .form-grid-2col .input-group input {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .strumming-controls {
+        gap: 0.6rem !important;
+        justify-content: flex-start !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+    }
+
+    .strumming-controls .btn {
+        min-width: 48px !important;
+        height: 48px !important;
+        padding: 0 !important;
+        flex: 0 0 auto !important;
+    }
+
+    .strumming-controls .btn-icon img {
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .split-headers {
+        grid-template-columns: 1fr !important;
+        gap: 0.5rem !important;
+    }
+
+    .split-headers>div:last-child {
+        display: none !important;
+        /* Hide "Pré-visualização" label on mobile as it's stacked */
+    }
+
+    .split-editor-container {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+        min-height: 80vh !important;
+        gap: 1.5rem !important;
+    }
+
+    #edit-content {
+        min-height: 40vh !important;
+    }
+
+    #edit-preview {
+        min-height: 40vh !important;
+    }
+
+    .input-group input,
+    .input-group select {
+        font-size: 16px !important;
+        /* Prevent auto-zoom on iOS */
+        padding: 0.8rem !important;
+    }
+
     .music-player-modal {
         bottom: 1.5rem;
         min-width: 280px;
