@@ -425,6 +425,203 @@ const app = {
         }
     },
 
+    slugify: (text) => {
+        return text.toString().toLowerCase().trim()
+            .replace(/&/g, 'e') // Especial para Cifra Club (Henrique & Juliano -> henrique-e-juliano)
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
+            .replace(/[^\w\s-]/g, '') // Remove caracteres especiais restantes
+            .replace(/[\s_-]+/g, '-') // Espaços para -
+            .replace(/^-+|-+$/g, ''); // Limpa bordas
+    },
+
+    importFromCifraClub: async () => {
+        const titleInput = document.getElementById('edit-title');
+        const artistInput = document.getElementById('edit-artist');
+        const title = titleInput.value.trim();
+        const artist = artistInput.value.trim();
+
+        if (!title || !artist) {
+            app.showToast('Preencha o Título e o Artista primeiro.');
+            return;
+        }
+
+        const btn = document.querySelector('button[onclick="app.importFromCifraClub()"]');
+        const originalText = btn.innerText;
+        btn.innerText = '⌛ Buscando...';
+        btn.disabled = true;
+
+        try {
+            // --- 0. Verificar se a música já existe na biblioteca ---
+            const querySnapshot = await app.db.collection('cifras')
+                .where('title', '==', title)
+                .where('artist', '==', artist)
+                .get();
+
+            if (!querySnapshot.empty && !document.getElementById('edit-id').value) {
+                const proceed = confirm(`A música "${title}" de "${artist}" já existe na sua biblioteca. Deseja importar e sobrescrever o conteúdo atual do editor?`);
+                if (!proceed) {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
+            const artSlug = app.slugify(artist);
+            const musSlug = app.slugify(title);
+            const url = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
+
+            // Proxy AllOrigins para evitar CORS
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+
+            const response = await fetch(proxyUrl);
+
+            if (!response.ok) throw new Error('Serviço de busca indisponível no momento.');
+
+            const textResponse = await response.text();
+            let data;
+
+            try {
+                data = JSON.parse(textResponse);
+            } catch (err) {
+                if (textResponse.includes('Oops') || textResponse.includes('404')) {
+                    throw new Error('Música não encontrada. Verifique se o nome do artista e da música estão corretos no Cifra Club.');
+                }
+                throw new Error('Resposta inválida do servidor de busca.');
+            }
+
+            if (!data || !data.contents) {
+                throw new Error('Conteúdo não encontrado. Pode ser que a URL gerada esteja incorreta.');
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.contents, 'text/html');
+
+            // Cifra Club costuma usar <pre> ou .cifra_cnt
+            let contentEl = doc.querySelector('pre') || doc.querySelector('.cifra_cnt');
+
+            if (!contentEl) {
+                throw new Error('Cifra não encontrada. Verifique se o nome está exato.');
+            }
+
+            // Converter <b>Acorde</b> para [Acorde]
+            let rawHtml = contentEl.innerHTML;
+            rawHtml = rawHtml.replace(/<a[^>]*>|<\/a>/g, '');
+            let formatted = rawHtml.replace(/<b>(.*?)<\/b>/g, '[$1]');
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = formatted;
+            let finalContent = tempDiv.innerText;
+
+            // --- Tentar capturar Tom e Capo do Cifra Club ---
+            const tomEl = doc.getElementById('cifra_tom');
+            if (tomEl && document.getElementById('edit-tom')) {
+                // Pega apenas o que está em destaque (b ou a), ignorando o resto
+                const specificTom = tomEl.querySelector('b') || tomEl.querySelector('a') || tomEl;
+                let tomVal = specificTom.innerText.trim();
+                document.getElementById('edit-tom').value = tomVal;
+            }
+
+            // Melhoria na detecção do Capo
+            let capoVal = null;
+            const capoMatch = data.contents.match(/capo:\s*(\d+)/i);
+            if (capoMatch) capoVal = capoMatch[1];
+
+            if (!capoVal) {
+                const capoEl = doc.getElementById('cifra_capo') || doc.querySelector('.js-capo-value');
+                if (capoEl) {
+                    const match = capoEl.innerText.match(/(\d+)/);
+                    if (match) capoVal = match[1];
+                }
+            }
+
+            if (capoVal && document.getElementById('edit-capo')) {
+                const select = document.getElementById('edit-capo');
+                const targetValue = capoVal + "ª Casa";
+                select.value = targetValue;
+
+                // Fallback se não bater exatamente com o value
+                if (select.selectedIndex === -1) {
+                    const options = Array.from(select.options);
+                    const matched = options.find(o => o.value.includes(capoVal) || o.text.includes(capoVal));
+                    if (matched) select.value = matched.value;
+                }
+            }
+
+            // Separar Tablaturas (Solo/Riff) da Letra (Usando buffer para preservar espaços)
+            const lines = finalContent.split('\n');
+            let mainLines = [];
+            let tabLines = [];
+            let emptyBuffer = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const lineTrim = line.trim();
+
+                if (lineTrim === "") {
+                    emptyBuffer.push(line);
+                    continue;
+                }
+
+                const nextLine = lines[i + 1] || "";
+                const nextNextLine = lines[i + 2] || "";
+
+                // É uma linha de tabulação real? (ex: |--- ou hífens longos)
+                const isTabLine = /[a-zA-Z]?\|-/.test(line) || /-[-|0-9]{8,}/.test(line);
+
+                // É um cabeçalho informativo de tab? 
+                const tabKeywords = /tab|solo|dedilhado|riff|baixo|intro/i;
+                const isTabHeading = (lineTrim.startsWith('[') && tabKeywords.test(lineTrim)) || (lineTrim.endsWith(':') && tabKeywords.test(lineTrim));
+
+                // Se é um cabeçalho e as próximas linhas são tab
+                const isHeadingForTab = isTabHeading && (
+                    /[a-zA-Z]?\|-/.test(nextLine) || /-[-|0-9]{8,}/.test(nextLine) ||
+                    /[a-zA-Z]?\|-/.test(nextNextLine) || /-[-|0-9]{8,}/.test(nextNextLine)
+                );
+
+                if (isTabLine || isHeadingForTab) {
+                    tabLines.push(...emptyBuffer);
+
+                    // Adicionar a linha
+                    tabLines.push(line);
+
+                    // Se for cabeçalho e a próxima linha NÃO for vazia, força um espaço para estética
+                    if (isHeadingForTab && nextLine.trim() !== "") {
+                        tabLines.push("");
+                    }
+
+                    emptyBuffer = [];
+                } else {
+                    mainLines.push(...emptyBuffer);
+                    mainLines.push(line);
+                    emptyBuffer = [];
+                }
+            }
+            // Limpa buffer restante
+            mainLines.push(...emptyBuffer);
+
+            const cleanMain = mainLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            const cleanTabs = tabLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+            // Preencher Editor
+            const textarea = document.getElementById('edit-content');
+            const tabArea = document.getElementById('edit-tabs');
+
+            textarea.value = cleanMain;
+            if (tabArea) tabArea.value = cleanTabs;
+
+            // Scroll to top of textarea and trigger preview
+            textarea.scrollTop = 0;
+            app.updateEditorPreview();
+
+        } catch (e) {
+            console.error('Erro na importação:', e);
+            alert('Erro ao importar: ' + e.message);
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    },
+
     logout: async () => {
         try {
             await app.auth.signOut();
@@ -722,6 +919,14 @@ const app = {
                 genreEl.style.display = 'none';
             }
 
+            const tomEl = document.getElementById('view-tom');
+            if (data.tom) {
+                tomEl.innerText = `🎼 Tom: ${data.tom}`;
+                tomEl.style.display = 'inline-block';
+            } else {
+                tomEl.style.display = 'none';
+            }
+
             if (data.capo) {
                 capoEl.innerText = `🎸 ${data.capo}`;
                 capoEl.style.display = 'inline-block';
@@ -1004,11 +1209,34 @@ const app = {
 
         try {
             if (id) {
-                // UPDATE
+                // UPDATE - Verificar se a mudança gera duplicata em outro doc
+                const dupCheck = await app.db.collection('cifras')
+                    .where('title', '==', data.title.trim())
+                    .where('artist', '==', data.artist.trim())
+                    .get();
+
+                // Se achar algo que não seja o próprio documento que estamos editando
+                const isDuplicate = dupCheck.docs.some(doc => doc.id !== id);
+
+                if (isDuplicate) {
+                    const confirmDup = confirm(`Atenção: Você está renomeando esta música para "${data.title}" de "${data.artist}", mas já existe outra música com esses mesmos dados na sua biblioteca. Deseja salvar mesmo assim?`);
+                    if (!confirmDup) return;
+                }
+
                 await app.db.collection('cifras').doc(id).update(data);
                 app.navigate('cifra', id);
             } else {
-                // CREATE
+                // CREATE - Verificar duplicata antes de criar
+                const dupCheck = await app.db.collection('cifras')
+                    .where('title', '==', data.title.trim())
+                    .where('artist', '==', data.artist.trim())
+                    .get();
+
+                if (!dupCheck.empty) {
+                    const confirmDup = confirm(`Atenção: Já existe uma música chamada "${data.title}" de "${data.artist}" na sua biblioteca. Deseja salvar mesmo assim (criando uma versão duplicada)?`);
+                    if (!confirmDup) return;
+                }
+
                 const docRef = await app.db.collection('cifras').add(data);
                 app.navigate('cifra', docRef.id);
             }
@@ -1316,6 +1544,7 @@ const app = {
         document.getElementById('edit-scrollSpeed').value = cifra.scrollSpeed || '';
         document.getElementById('edit-scrollSpeedMobile').value = cifra.scrollSpeedMobile || cifra.scrollSpeed || '';
         document.getElementById('edit-capo').value = cifra.capo || '';
+        document.getElementById('edit-tom').value = cifra.tom || '';
         document.getElementById('edit-genre').value = cifra.genre || '';
         document.getElementById('edit-bpm').value = cifra.bpm || '';
         document.getElementById('edit-youtube').value = cifra.youtube || '';

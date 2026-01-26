@@ -196,6 +196,8 @@
                 style="font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
                 <span id="view-genre"
                     style="display:none; background: #e0f2f1; color: #004d40; padding: 2px 8px; border-radius: 4px; font-weight: 500;"></span>
+                <span id="view-tom"
+                    style="display:none; background: #e3f2fd; color: #0d47a1; padding: 2px 8px; border-radius: 4px; font-weight: 500;"></span>
                 <span id="view-capo"
                     style="display:none; background: #f3e5f5; color: #4a148c; padding: 2px 8px; border-radius: 4px; font-weight: 500;"></span>
 
@@ -325,7 +327,14 @@
             </div>
             <div class="input-group">
                 <label>Artista / Banda</label>
-                <input type="text" name="artist" id="edit-artist" required placeholder="Ex: Legião Urbana">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" name="artist" id="edit-artist" required placeholder="Ex: Legião Urbana"
+                        style="flex: 1;">
+                    <button type="button" class="btn btn-outline" onclick="app.importFromCifraClub()"
+                        style="border-color: var(--primary-color); color: var(--primary-color); font-size: 0.8rem; padding: 0.75rem 1rem; white-space: nowrap;">
+                        ✨ Importar Cifras
+                    </button>
+                </div>
             </div>
 
             <div class="input-group"
@@ -338,7 +347,11 @@
 
             <div class="form-grid">
                 <div class="input-group">
-                    <label>Tom / Capo</label>
+                    <label>Tom</label>
+                    <input type="text" name="tom" id="edit-tom" placeholder="Ex: G, Am, E">
+                </div>
+                <div class="input-group">
+                    <label>Capotraste</label>
                     <select name="capo" id="edit-capo" style="width:100%; padding:0.5rem;">
                         <option value="">Sem Capo</option>
                         <option value="1ª Casa">1ª Casa</option>
