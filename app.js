@@ -253,12 +253,13 @@ const app = {
             const isLocalFile = window.location.protocol === 'file:';
             const origin = isLocalFile ? null : window.location.origin;
 
-            // Se o player já existe, verificar se o container ainda está no DOM
-            if (app.ytPlayer && !document.getElementById('music-player-container')) {
+            // Se o player já existe, verificar se o container na tela é o novo DIV (resetado pela navegação)
+            // A API do YouTube substitui o DIV por um IFRAME. Se for DIV, o player é "stale" (velho).
+            const isStale = app.ytPlayer && container && container.tagName === 'DIV';
+
+            if (isStale) {
                 try { app.ytPlayer.destroy(); } catch (e) { }
                 app.ytPlayer = null;
-                // Recriar o div placeholder que o YT.Player remove/substitui
-                container.innerHTML = '<div id="music-player-container"></div>';
             }
 
             // Se o player já existe e é válido, apenas carregar novo vídeo
