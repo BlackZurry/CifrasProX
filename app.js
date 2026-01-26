@@ -128,6 +128,13 @@ const app = {
             const view = location.hash ? location.hash.substring(1).split('/')[0] : 'home';
             const param = location.hash ? location.hash.substring(1).split('/')[1] : null;
 
+            // Fechar popover ao clicar fora
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.interactive-chord') && !e.target.closest('.chord-popover')) {
+                    app.hideChordPopover();
+                }
+            });
+
             // Substitui o estado inicial para ter a URL correta logo de cara
             history.replaceState({ view, param }, '', location.hash || '#home');
             app.navigate(view, param, true);
@@ -769,15 +776,17 @@ const app = {
             // Standard Chord Replacement (Regex) - Reverting Smart Logic
             contentHtml = contentHtml.replace(/\[([^\]]+)\]/g, (match, chordName) => {
                 if (chordName.startsWith('|') || chordName.startsWith('.')) return match;
-                const cleanName = chordName.replace(/[\[\]\*]/g, '');
 
                 const openB = '<span class="chord-bracket">[</span>';
                 const closeB = '<span class="chord-bracket">]</span>';
 
-                if (app.isActualChord(cleanName)) {
-                    return `${openB}<b class="interactive-chord" onclick="app.highlightChord('${cleanName}')">${cleanName}</b>${closeB}`;
+                const fullChordName = chordName;
+                const cleanBase = chordName.replace(/\*+$/, '');
+
+                if (app.isActualChord(cleanBase)) {
+                    return `${openB}<b class="interactive-chord" onclick="app.showChordPopover(event, '${fullChordName}')">${fullChordName}</b>${closeB}`;
                 } else {
-                    return `${openB}<b class="section-marker">${cleanName}</b>${closeB}`;
+                    return `${openB}<b class="section-marker">${fullChordName}</b>${closeB}`;
                 }
             });
 
@@ -1378,15 +1387,16 @@ const app = {
         const formatted = content.replace(/\[([^\]]+)\]/g, (match, chord) => {
             if (match.includes('Loop')) return match;
             if (match.includes('<')) return match; // Already processed
-            const cleanName = chord.replace(/[\[\]\*]/g, '');
+            const fullChordName = chord;
+            const cleanBase = chord.replace(/\*+$/, '');
 
             const openB = '<span class="chord-bracket">[</span>';
             const closeB = '<span class="chord-bracket">]</span>';
 
-            if (app.isActualChord(cleanName)) {
-                return `${openB}<b class="interactive-chord" style="color:var(--chord-color); cursor:pointer;">${cleanName}</b>${closeB}`;
+            if (app.isActualChord(cleanBase)) {
+                return `${openB}<b class="interactive-chord" style="color:var(--chord-color); cursor:pointer;" onclick="app.showChordPopover(event, '${fullChordName}')">${fullChordName}</b>${closeB}`;
             } else {
-                return `${openB}<b class="section-marker" style="color:var(--primary-color); font-weight:700;">${cleanName}</b>${closeB}`;
+                return `${openB}<b class="section-marker" style="color:var(--primary-color); font-weight:700;">${fullChordName}</b>${closeB}`;
             }
         });
 
@@ -1768,6 +1778,53 @@ const app = {
                 card.style.borderColor = 'var(--border-color)';
             }, 1000);
         }
+    },
+
+    showChordPopover: (e, chordName) => {
+        e.stopPropagation();
+        app.hideChordPopover(); // Close previous if any
+
+        const starsCount = chordName.split('*').length - 1;
+        const cleanBase = chordName.replace(/\*+$/, '');
+
+        const svg = Chords.render(cleanBase, starsCount);
+        if (!svg) return;
+
+        const popover = document.createElement('div');
+        popover.className = 'chord-popover';
+        popover.id = 'floating-chord-popover';
+
+        popover.innerHTML = `
+            <div class="chord-name">${cleanBase}</div>
+            <div class="chord-svg-container">${svg}</div>
+        `;
+
+        document.body.appendChild(popover);
+
+        // Position the popover
+        const trigger = e.currentTarget;
+        const rect = trigger.getBoundingClientRect();
+        const popoverRect = popover.getBoundingClientRect();
+
+        let top = rect.top - popoverRect.height - 10 + window.scrollY;
+        let left = rect.left + (rect.width / 2) - (popoverRect.width / 2) + window.scrollX;
+
+        // Ajustes para bordas da tela
+        if (left < 10) left = 10;
+        if (left + popoverRect.width > window.innerWidth - 10) {
+            left = window.innerWidth - popoverRect.width - 10;
+        }
+        if (top < window.scrollY + 10) {
+            top = rect.bottom + 10 + window.scrollY;
+        }
+
+        popover.style.top = top + 'px';
+        popover.style.left = left + 'px';
+    },
+
+    hideChordPopover: () => {
+        const existing = document.getElementById('floating-chord-popover');
+        if (existing) existing.remove();
     },
 
     // --- AUTOSCROLL ---
