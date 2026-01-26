@@ -199,6 +199,7 @@ const app = {
                 return;
             }
             if (param) app.loadEditor(param);
+            else app.updateEditorPreview();
         } else if (view === 'library') {
             app.loadLibrary();
         } else if (view === 'setlists') {
@@ -599,7 +600,7 @@ const app = {
             // Limpa buffer restante
             mainLines.push(...emptyBuffer);
 
-            const cleanMain = mainLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+            const cleanMain = "[p|0|0|]\n\n" + mainLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
             const cleanTabs = tabLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 
             // Preencher Editor
@@ -1536,15 +1537,15 @@ const app = {
     // Ou usar 'app' explicitamente.
 
     loadEditor: (cifra) => {
-        // Populate inputs
-        document.getElementById('edit-id').value = cifra.id;
-        document.getElementById('edit-title').value = cifra.title;
-        document.getElementById('edit-artist').value = cifra.artist;
-        document.getElementById('edit-content').value = cifra.content;
-        document.getElementById('edit-scrollSpeed').value = cifra.scrollSpeed || '';
-        document.getElementById('edit-scrollSpeedMobile').value = cifra.scrollSpeedMobile || cifra.scrollSpeed || '';
-        document.getElementById('edit-capo').value = cifra.capo || '';
+        // Populate inputs with defaults for new songs
+        document.getElementById('edit-id').value = cifra.id || '';
+        document.getElementById('edit-title').value = cifra.title || '';
+        document.getElementById('edit-artist').value = cifra.artist || '';
+        document.getElementById('edit-content').value = cifra.content || '[p|0|0|]\n\n';
+        document.getElementById('edit-scrollSpeed').value = cifra.scrollSpeed || '1';
+        document.getElementById('edit-scrollSpeedMobile').value = cifra.scrollSpeedMobile || cifra.scrollSpeed || '1';
         document.getElementById('edit-tom').value = cifra.tom || '';
+        document.getElementById('edit-capo').value = cifra.capo || '';
         document.getElementById('edit-genre').value = cifra.genre || '';
         document.getElementById('edit-bpm').value = cifra.bpm || '';
         document.getElementById('edit-youtube').value = cifra.youtube || '';

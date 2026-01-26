@@ -396,11 +396,11 @@
                 <div class="input-group">
                     <label>Velocidade Mobile (1-100)</label>
                     <input type="number" name="scrollSpeedMobile" id="edit-scrollSpeedMobile" min="1" max="100" required
-                        style="width: 100px;">
+                        value="1" style="width: 100px;">
                 </div>
                 <div class="input-group">
                     <label>Velocidade Tablet (1-100)</label>
-                    <input type="number" name="scrollSpeed" id="edit-scrollSpeed" min="1" max="100" required
+                    <input type="number" name="scrollSpeed" id="edit-scrollSpeed" min="1" max="100" required value="1"
                         style="width: 100px;">
                 </div>
             </div>
@@ -470,7 +470,9 @@
                     <textarea name="content" id="edit-content"
                         style="width: 100%; height: 100%; resize: none; font-family: monospace; font-size: 15px; line-height: 1.5; white-space: pre; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; overflow-y: auto;"
                         required placeholder="Cole a letra com os acordes entre colchetes, ex: [G] [Am]"
-                        oninput="app.updateEditorPreview()" onscroll="app.syncEditorScroll()"></textarea>
+                        oninput="app.updateEditorPreview()" onscroll="app.syncEditorScroll()">[p|0|0|]
+
+</textarea>
 
                     <div id="edit-preview" class="cifra-content"
                         style="width: 100%; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); padding: 1rem; overflow-y: auto; font-family: monospace; font-size: 15px; white-space: pre-wrap; position: relative;">
