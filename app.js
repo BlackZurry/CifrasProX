@@ -253,7 +253,15 @@ const app = {
             const isLocalFile = window.location.protocol === 'file:';
             const origin = isLocalFile ? null : window.location.origin;
 
-            // Se o player já existe, apenas carregar novo vídeo
+            // Se o player já existe, verificar se o container ainda está no DOM
+            if (app.ytPlayer && !document.getElementById('music-player-container')) {
+                try { app.ytPlayer.destroy(); } catch (e) { }
+                app.ytPlayer = null;
+                // Recriar o div placeholder que o YT.Player remove/substitui
+                container.innerHTML = '<div id="music-player-container"></div>';
+            }
+
+            // Se o player já existe e é válido, apenas carregar novo vídeo
             if (app.ytPlayer && typeof app.ytPlayer.loadVideoById === 'function') {
                 app.ytPlayer.loadVideoById(id);
             } else {
@@ -294,12 +302,22 @@ const app = {
             }
         } else {
             modal.classList.remove('active');
+
+            // Pausar e limpar o player para evitar bugs de estado
             if (app.ytPlayer && typeof app.ytPlayer.pauseVideo === 'function') {
                 app.ytPlayer.pauseVideo();
             }
+
             setTimeout(() => {
                 modal.style.display = 'none';
-                if (!app.ytPlayer) container.innerHTML = '';
+                // SEMPRE destruir o player se ele for iframe (fallback) ou se quisermos garantir limpeza total
+                if (!app.ytPlayer) {
+                    container.innerHTML = '<div id="music-player-container"></div>';
+                } else {
+                    // Opcional: Para máxima robustez em SPAs, podemos destruir no fechar
+                    // Mas vamos manter a tentativa de reuso se o elemento ainda existir.
+                    // Se o usuário fechar o modal e trocar de música (navigate), o navigate já limpa o app.ytPlayer.
+                }
             }, 400);
         }
     },
