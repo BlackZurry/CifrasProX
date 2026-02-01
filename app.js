@@ -471,27 +471,43 @@ const app = {
             const musSlug = app.slugify(title);
             const url = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
 
-            // Proxy AllOrigins para evitar CORS
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            // Função para tentar buscar com diferentes proxies
+            const fetchWithProxy = async (targetUrl) => {
+                const proxies = [
+                    { 
+                        name: 'corsproxy.io',
+                        url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+                        parseResponse: async (res) => ({ contents: await res.text() })
+                    },
+                    { 
+                        name: 'allorigins',
+                        url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+                        parseResponse: async (res) => JSON.parse(await res.text())
+                    }
+                ];
 
-            const response = await fetch(proxyUrl);
-
-            if (!response.ok) throw new Error('Serviço de busca indisponível no momento.');
-
-            const textResponse = await response.text();
-            let data;
-
-            try {
-                data = JSON.parse(textResponse);
-            } catch (err) {
-                if (textResponse.includes('Oops') || textResponse.includes('404')) {
-                    throw new Error('Música não encontrada. Verifique se o nome do artista e da música estão corretos no Cifra Club.');
+                for (const proxy of proxies) {
+                    try {
+                        const response = await fetch(proxy.url);
+                        if (!response.ok) continue;
+                        const data = await proxy.parseResponse(response);
+                        if (data && data.contents) return data;
+                    } catch (e) {
+                        console.warn(`Proxy ${proxy.name} falhou:`, e.message);
+                    }
                 }
-                throw new Error('Resposta inválida do servidor de busca.');
-            }
+                throw new Error('Todos os serviços de busca estão indisponíveis no momento. Tente novamente mais tarde.');
+            };
+
+            const data = await fetchWithProxy(url);
 
             if (!data || !data.contents) {
                 throw new Error('Conteúdo não encontrado. Pode ser que a URL gerada esteja incorreta.');
+            }
+            
+            // Verificar se a página retornou erro 404
+            if (data.contents.includes('Oops') || data.contents.includes('Página não encontrada')) {
+                throw new Error('Música não encontrada. Verifique se o nome do artista e da música estão corretos no Cifra Club.');
             }
 
             const parser = new DOMParser();
