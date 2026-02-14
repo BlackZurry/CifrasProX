@@ -89,6 +89,11 @@ const app = {
 
                 app.renderHeader(app.state.currentView);
 
+                // Update UI elements based on view
+                if (app.state.currentView === 'library') {
+                    app.loadLibrary();
+                }
+
                 // Update Home UI elements (Create Button)
                 if (app.state.currentView === 'home') {
                     const btnCreate = document.getElementById('btn-create');
@@ -469,17 +474,17 @@ const app = {
 
             const artSlug = app.slugify(artist);
             const musSlug = app.slugify(title);
-            const url = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
+            const baseUrl = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
 
             // Função para tentar buscar com diferentes proxies
             const fetchWithProxy = async (targetUrl) => {
                 const proxies = [
-                    { 
+                    {
                         name: 'corsproxy.io',
                         url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
                         parseResponse: async (res) => ({ contents: await res.text() })
                     },
-                    { 
+                    {
                         name: 'allorigins',
                         url: `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
                         parseResponse: async (res) => JSON.parse(await res.text())
@@ -499,19 +504,46 @@ const app = {
                 throw new Error('Todos os serviços de busca estão indisponíveis no momento. Tente novamente mais tarde.');
             };
 
-            const data = await fetchWithProxy(url);
+            // 1. Buscar a página principal primeiro para detectar versões
+            let data = await fetchWithProxy(baseUrl);
 
             if (!data || !data.contents) {
                 throw new Error('Conteúdo não encontrado. Pode ser que a URL gerada esteja incorreta.');
             }
-            
+
             // Verificar se a página retornou erro 404
             if (data.contents.includes('Oops') || data.contents.includes('Página não encontrada')) {
                 throw new Error('Música não encontrada. Verifique se o nome do artista e da música estão corretos no Cifra Club.');
             }
 
             const parser = new DOMParser();
-            const doc = parser.parseFromString(data.contents, 'text/html');
+            let doc = parser.parseFromString(data.contents, 'text/html');
+
+            // --- NOVO: Verificar se existem várias versões ---
+            // Cifra Club costuma ter uma lista de versões ou links para /simplificada/
+            const hasSimplified = data.contents.includes('simplificada.html') ||
+                doc.querySelector('a[href*="simplificada"]') ||
+                doc.querySelector('li[data-version="Simplificada"]');
+
+            if (hasSimplified) {
+                const choice = await app.modal({
+                    title: 'Várias versões encontradas',
+                    content: `A música <b>${title}</b> possui versões diferentes. Qual deseja importar?`,
+                    confirmText: 'Principal',
+                    cancelText: 'Simplificada',
+                });
+
+                // Se choice for false/null (Cancel), o usuário clicou em 'Simplificada' (que mapeamos no cancelText para facilitar)
+                // Na nossa função modal, cancel resolve com null. Vamos ajustar a lógica do modal ou fazer um modal customizado.
+                // Ajustando lógica: se choice é null, foi Simplificada. Se true, foi Principal.
+
+                if (choice === null) {
+                    btn.innerText = '⌛ Buscando Simplificada...';
+                    const simplifiedUrl = baseUrl + 'simplificada.html';
+                    data = await fetchWithProxy(simplifiedUrl);
+                    doc = parser.parseFromString(data.contents, 'text/html');
+                }
+            }
 
             // Cifra Club costuma usar <pre> ou .cifra_cnt
             let contentEl = doc.querySelector('pre') || doc.querySelector('.cifra_cnt');
@@ -532,7 +564,6 @@ const app = {
             // --- Tentar capturar Tom e Capo do Cifra Club ---
             const tomEl = doc.getElementById('cifra_tom');
             if (tomEl && document.getElementById('edit-tom')) {
-                // Pega apenas o que está em destaque (b ou a), ignorando o resto
                 const specificTom = tomEl.querySelector('b') || tomEl.querySelector('a') || tomEl;
                 let tomVal = specificTom.innerText.trim();
                 document.getElementById('edit-tom').value = tomVal;
@@ -556,7 +587,6 @@ const app = {
                 const targetValue = capoVal + "ª Casa";
                 select.value = targetValue;
 
-                // Fallback se não bater exatamente com o value
                 if (select.selectedIndex === -1) {
                     const options = Array.from(select.options);
                     const matched = options.find(o => o.value.includes(capoVal) || o.text.includes(capoVal));
@@ -582,14 +612,9 @@ const app = {
                 const nextLine = lines[i + 1] || "";
                 const nextNextLine = lines[i + 2] || "";
 
-                // É uma linha de tabulação real? (ex: |--- ou hífens longos)
                 const isTabLine = /[a-zA-Z]?\|-/.test(line) || /-[-|0-9]{8,}/.test(line);
-
-                // É um cabeçalho informativo de tab? 
                 const tabKeywords = /tab|solo|dedilhado|riff|baixo|intro/i;
                 const isTabHeading = (lineTrim.startsWith('[') && tabKeywords.test(lineTrim)) || (lineTrim.endsWith(':') && tabKeywords.test(lineTrim));
-
-                // Se é um cabeçalho e as próximas linhas são tab
                 const isHeadingForTab = isTabHeading && (
                     /[a-zA-Z]?\|-/.test(nextLine) || /-[-|0-9]{8,}/.test(nextLine) ||
                     /[a-zA-Z]?\|-/.test(nextNextLine) || /-[-|0-9]{8,}/.test(nextNextLine)
@@ -597,15 +622,10 @@ const app = {
 
                 if (isTabLine || isHeadingForTab) {
                     tabLines.push(...emptyBuffer);
-
-                    // Adicionar a linha
                     tabLines.push(line);
-
-                    // Se for cabeçalho e a próxima linha NÃO for vazia, força um espaço para estética
                     if (isHeadingForTab && nextLine.trim() !== "") {
                         tabLines.push("");
                     }
-
                     emptyBuffer = [];
                 } else {
                     mainLines.push(...emptyBuffer);
@@ -613,20 +633,17 @@ const app = {
                     emptyBuffer = [];
                 }
             }
-            // Limpa buffer restante
             mainLines.push(...emptyBuffer);
 
             const cleanMain = "[p|0|0|]\n\n" + mainLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
             const cleanTabs = tabLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 
-            // Preencher Editor
             const textarea = document.getElementById('edit-content');
             const tabArea = document.getElementById('edit-tabs');
 
             textarea.value = cleanMain;
             if (tabArea) tabArea.value = cleanTabs;
 
-            // Scroll to top of textarea and trigger preview
             textarea.scrollTop = 0;
             app.updateEditorPreview();
 
@@ -1947,7 +1964,14 @@ const app = {
         const container = document.getElementById('library-list');
         if (!container) return;
         container.innerHTML = '';
-        Object.keys(Chords.dict).sort().forEach(chordName => {
+
+        // Deduplicar nomes base (ex: Am e Am* -> Am)
+        const baseNames = new Set();
+        Object.keys(Chords.dict).forEach(key => {
+            baseNames.add(key.replace(/\*+$/, ''));
+        });
+
+        Array.from(baseNames).sort().forEach(chordName => {
             const card = app.createChordCard(chordName, true);
             if (card) {
                 card.style.width = '160px';
