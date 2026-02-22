@@ -443,11 +443,14 @@ const app = {
     importFromCifraClub: async () => {
         const titleInput = document.getElementById('edit-title');
         const artistInput = document.getElementById('edit-artist');
+        const urlInput = document.getElementById('edit-import-url');
+
         const title = titleInput.value.trim();
         const artist = artistInput.value.trim();
+        const directUrl = urlInput?.value.trim();
 
-        if (!title || !artist) {
-            app.showToast('Preencha o Título e o Artista primeiro.');
+        if (!directUrl && (!title || !artist)) {
+            app.showToast('Preencha o Título e o Artista OU cole um link do Cifra Club.');
             return;
         }
 
@@ -457,24 +460,18 @@ const app = {
         btn.disabled = true;
 
         try {
-            // --- 0. Verificar se a música já existe na biblioteca ---
-            const querySnapshot = await app.db.collection('cifras')
-                .where('title', '==', title)
-                .where('artist', '==', artist)
-                .get();
+            let baseUrl = directUrl;
 
-            if (!querySnapshot.empty && !document.getElementById('edit-id').value) {
-                const proceed = confirm(`A música "${title}" de "${artist}" já existe na sua biblioteca. Deseja importar e sobrescrever o conteúdo atual do editor?`);
-                if (!proceed) {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    return;
-                }
+            // Se não passou URL direta, gera a partir do nome/artista
+            if (!baseUrl) {
+                const artSlug = app.slugify(artist);
+                const musSlug = app.slugify(title);
+                baseUrl = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
+            } else {
+                // Limpeza básica da URL direta (remover query strings ou fragmentos se houver)
+                baseUrl = baseUrl.split('?')[0].split('#')[0];
+                if (!baseUrl.endsWith('/') && !baseUrl.endsWith('.html')) baseUrl += '/';
             }
-
-            const artSlug = app.slugify(artist);
-            const musSlug = app.slugify(title);
-            const baseUrl = `https://www.cifraclub.com.br/${artSlug}/${musSlug}/`;
 
             // Função para tentar buscar com diferentes proxies
             const fetchWithProxy = async (targetUrl) => {
@@ -519,11 +516,23 @@ const app = {
             const parser = new DOMParser();
             let doc = parser.parseFromString(data.contents, 'text/html');
 
+            // --- NOVO: Se importou via URL, tenta preencher título e artista se estiverem vazios ---
+            if (directUrl) {
+                const fetchedTitle = doc.querySelector('h1.t1')?.innerText.trim() || doc.querySelector('.cifra-title')?.innerText.trim();
+                const fetchedArtist = doc.querySelector('h2.t3')?.innerText.trim() || doc.querySelector('.cifra-artist')?.innerText.trim();
+
+                if (fetchedTitle && !titleInput.value) titleInput.value = fetchedTitle;
+                if (fetchedArtist && !artistInput.value) artistInput.value = fetchedArtist;
+            }
+
             // --- NOVO: Verificar se existem várias versões ---
-            // Cifra Club costuma ter uma lista de versões ou links para /simplificada/
-            const hasSimplified = data.contents.includes('simplificada.html') ||
+            // Se o link já for para a simplificada, não pergunta novamente
+            const isSimplifiedUrl = baseUrl.includes('simplificada.html');
+            const hasSimplified = !isSimplifiedUrl && (
+                data.contents.includes('simplificada.html') ||
                 doc.querySelector('a[href*="simplificada"]') ||
-                doc.querySelector('li[data-version="Simplificada"]');
+                doc.querySelector('li[data-version="Simplificada"]')
+            );
 
             if (hasSimplified) {
                 const choice = await app.modal({
