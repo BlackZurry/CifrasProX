@@ -158,8 +158,8 @@ const app = {
             }
         }
 
-        // Stop player when navigating
-        if (app.musicPlayerActive) {
+        // Stop player when navigating AWAY from cifra view
+        if (app.musicPlayerActive && view !== 'cifra') {
             app.toggleMusicPlayer(false);
         }
 
@@ -300,6 +300,13 @@ const app = {
                             'onReady': (event) => {
                                 event.target.playVideo();
                             },
+                            'onStateChange': (event) => {
+                                // Se o vídeo acabou (0 = ENDED) e estamos em um repertório, pula para a próxima
+                                if (event.data === 0 && app.state.currentSetlist) {
+                                    app.showToast('Pulando para a próxima música... ⏭️');
+                                    app.nextInSetlist(true);
+                                }
+                            },
                             'onError': (event) => {
                                 console.warn('YouTube Player Error:', event.data);
                                 if (isLocalFile && event.data === 153) {
@@ -316,6 +323,7 @@ const app = {
             }
         } else {
             modal.classList.remove('active');
+            document.body.classList.remove('player-active');
 
             // Pausar e limpar o player para evitar bugs de estado
             if (app.ytPlayer && typeof app.ytPlayer.pauseVideo === 'function') {
@@ -822,7 +830,7 @@ const app = {
                         ${input ? `<input type="text" class="modal-input" id="${id}-input" placeholder="${placeholder}" autofocus>` : ''}
                         <div class="modal-actions">
                             ${cancelText ? `<button class="btn btn-outline" id="${id}-cancel">${cancelText}</button>` : ''}
-                            <button class="btn btn-primary" id="${id}-confirm">${confirmText}</button>
+                            ${confirmText ? `<button class="btn btn-primary" id="${id}-confirm">${confirmText}</button>` : ''}
                         </div>
                     </div>
                 </div>
@@ -846,32 +854,36 @@ const app = {
             const inputField = document.getElementById(`${id}-input`);
             if (inputField) {
                 inputField.addEventListener('keyup', (e) => {
-                    if (e.key === 'Enter') document.getElementById(`${id}-confirm`).click();
+                    const confirmBtn = document.getElementById(`${id}-confirm`);
+                    if (e.key === 'Enter' && confirmBtn) confirmBtn.click();
                 });
             }
 
-            document.getElementById(`${id}-confirm`).onclick = () => {
-                // If it's a generic input, resolve with its value
-                if (input) {
-                    cleanup(inputField.value);
-                    return;
-                }
+            const confirmBtn = document.getElementById(`${id}-confirm`);
+            if (confirmBtn) {
+                confirmBtn.onclick = () => {
+                    // If it's a generic input, resolve with its value
+                    if (input) {
+                        cleanup(inputField.value);
+                        return;
+                    }
 
-                // Custom logic for Chord Creator: grab values before they disappear from DOM
-                const nameInp = document.getElementById('new-chord-name');
-                const barInp = document.getElementById('chord-bar');
-                const noBarInp = document.getElementById('chord-no-bar');
+                    // Custom logic for Chord Creator: grab values before they disappear from DOM
+                    const nameInp = document.getElementById('new-chord-name');
+                    const barInp = document.getElementById('chord-bar');
+                    const noBarInp = document.getElementById('chord-no-bar');
 
-                if (nameInp && barInp) {
-                    cleanup({
-                        name: nameInp.value,
-                        bar: parseInt(barInp.value),
-                        noBar: noBarInp ? noBarInp.checked : false
-                    });
-                } else {
-                    cleanup(true);
-                }
-            };
+                    if (nameInp && barInp) {
+                        cleanup({
+                            name: nameInp.value,
+                            bar: parseInt(barInp.value),
+                            noBar: noBarInp ? noBarInp.checked : false
+                        });
+                    } else {
+                        cleanup(true);
+                    }
+                };
+            }
 
             if (cancelText) {
                 document.getElementById(`${id}-cancel`).onclick = () => cleanup(null);
@@ -1085,6 +1097,14 @@ const app = {
             // Actually navigate calls renderHeader('cifra'), which checks app.state.user. 
             // So it should be fine.
             app.renderHeader('cifra'); // Re-run to ensure buttons appear if state matches
+
+            // Se o player estiver ativo (Playlist mode ou manual), atualiza para a nova música
+            if (app.musicPlayerActive) {
+                // Pequeno delay para garantir que o DOM (DIV do container) foi resetado pelo navigate
+                setTimeout(() => {
+                    app.toggleMusicPlayer(true);
+                }, 300);
+            }
 
         } catch (e) {
             console.error('Erro em loadCifra:', e);
@@ -1323,6 +1343,34 @@ const app = {
     },
 
     // --- SETLISTS ---
+    getSetlist: (id) => {
+        if (id === 'builtin-ready') {
+            return {
+                id: 'builtin-ready',
+                name: '✅ Músicas Prontas',
+                songs: app.state.cifras.filter(c => c.ready).map(c => c.id),
+                isBuiltin: true
+            };
+        }
+        if (id === 'builtin-drafts') {
+            return {
+                id: 'builtin-drafts',
+                name: '📝 Músicas em Edição',
+                songs: app.state.cifras.filter(c => !c.ready).map(c => c.id),
+                isBuiltin: true
+            };
+        }
+        if (id === 'builtin-youtube') {
+            return {
+                id: 'builtin-youtube',
+                name: '🎬 Playlist de Vídeos',
+                songs: app.state.cifras.filter(c => c.youtube).map(c => c.id),
+                isBuiltin: true
+            };
+        }
+        return app.state.setlists.find(s => s.id === id);
+    },
+
     loadSetlists: async () => {
         if (!app.state.user) return;
         // Realtime listener handles data updates and calls renderSetlistsGrid
@@ -1338,7 +1386,29 @@ const app = {
             return;
         }
 
-        grid.innerHTML = app.state.setlists.map(s => `
+        const builtinReady = app.getSetlist('builtin-ready');
+        const builtinDrafts = app.getSetlist('builtin-drafts');
+
+        const builtinHtml = `
+            <div class="cifra-card builtin-card" onclick="app.playSetlist('builtin-ready')">
+                <div class="cifra-title">${builtinReady.name}</div>
+                <div class="cifra-artist">${builtinReady.songs.length} músicas</div>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; position: relative; z-index: 2;">
+                    <button class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-color: var(--primary-color); color: var(--primary-color);" onclick="event.stopPropagation(); app.openSetlist('builtin-ready')">Ver Músicas</button>
+                </div>
+                <img src="icons/repertorio.svg" class="genre-icon-bg" style="opacity: 0.1;">
+            </div>
+            <div class="cifra-card builtin-card" onclick="app.playSetlist('builtin-drafts')">
+                <div class="cifra-title">${builtinDrafts.name}</div>
+                <div class="cifra-artist">${builtinDrafts.songs.length} músicas</div>
+                <div style="margin-top: 1rem; display: flex; gap: 0.5rem; position: relative; z-index: 2;">
+                    <button class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-color: var(--primary-color); color: var(--primary-color);" onclick="event.stopPropagation(); app.openSetlist('builtin-drafts')">Ver Músicas</button>
+                </div>
+                <img src="icons/repertorio.svg" class="genre-icon-bg" style="opacity: 0.1;">
+            </div>
+        `;
+
+        grid.innerHTML = builtinHtml + app.state.setlists.map(s => `
             <div class="cifra-card" onclick="app.playSetlist('${s.id}')">
                 <div class="cifra-title">${s.name}</div>
                 <div class="cifra-artist">${s.songs ? s.songs.length : 0} músicas</div>
@@ -1400,25 +1470,44 @@ const app = {
             return;
         }
 
-        const choices = app.state.setlists.map((s, i) => `<div style="padding:0.5rem; border-bottom:1px solid #eee; cursor:pointer;" onclick="window._modalResolve(${i})">${s.name}</div>`).join('');
+        // Ordenação fixa (alfabética)
+        const sortedSetlists = [...app.state.setlists].sort((a, b) => a.name.localeCompare(b.name));
 
-        // We can't easily use the generic modal for listing yet without more config, 
-        // but let's just use the generic input modal but inform how to use it
-        const setlistNames = app.state.setlists.map((s, i) => `${i + 1}. ${s.name}`).join('\n');
-        const choice = await app.modal({
+        const listHtml = `
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                ${sortedSetlists.map(s => {
+            const alreadyIn = s.songs && s.songs.includes(songId);
+            return `
+                        <div class="setlist-picker-item ${alreadyIn ? 'disabled' : ''}" 
+                             ${alreadyIn ? '' : `onclick="window._modalResolve('${s.id}')"`}
+                             style="padding: 1rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; cursor: ${alreadyIn ? 'not-allowed' : 'pointer'}; font-weight: 500; transition: all 0.2s; ${alreadyIn ? 'opacity: 0.4; pointer-events: none;' : ''}">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>${s.name}</span>
+                                ${alreadyIn ? '<span style="font-size: 0.7rem; font-weight: bold; color: var(--primary-color);">JÁ ADICIONADO</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+        }).join('')}
+            </div>
+            <style>
+                .setlist-picker-item:not(.disabled):hover {
+                    background: var(--primary-color) !important;
+                    color: white !important;
+                    border-color: var(--primary-color) !important;
+                    transform: translateY(-2px);
+                }
+            </style>
+        `;
+
+        const choiceId = await app.modal({
             title: 'Adicionar ao Repertório',
-            content: `Escolha o número do repertório:\n\n${setlistNames}`,
-            input: true,
-            placeholder: 'Digite o número',
-            confirmText: 'Adicionar',
+            content: `Selecione para qual repertório deseja enviar esta música:${listHtml}`,
+            confirmText: null, // Agora o modal entende null como "não mostrar"
             cancelText: 'Cancelar'
         });
 
-        if (choice) {
-            const index = parseInt(choice) - 1;
-            if (app.state.setlists[index]) {
-                app.addToSetlist(app.state.setlists[index].id, songId);
-            }
+        if (choiceId) {
+            app.addToSetlist(choiceId, songId);
         }
     },
 
@@ -1442,18 +1531,112 @@ const app = {
     },
 
     playSetlist: async (id) => {
-        const setlist = app.state.setlists.find(s => s.id === id);
+        const setlist = app.getSetlist(id);
         if (setlist && setlist.songs && setlist.songs.length > 0) {
             app.state.currentSetlist = setlist;
             app.state.currentSetlistIndex = 0;
             app.navigate('cifra', setlist.songs[0]);
+
+            // Se for playlist de Youtube, tenta abrir o player automaticamente após navegar
+            if (id === 'builtin-youtube') {
+                setTimeout(() => {
+                    app.toggleMusicPlayer(true);
+                }, 800);
+            }
         } else {
-            app.modal({ title: 'Atenção', content: 'Este repertório está vazio. Adicione músicas para começar a tocar.', confirmText: 'OK', cancelText: null });
+            app.modal({ title: 'Atenção', content: 'Nenhuma música com vídeo encontrada.', confirmText: 'OK', cancelText: null });
+        }
+    },
+
+    playYouTubePlaylist: () => {
+        const setlist = app.getSetlist('builtin-youtube');
+        if (setlist && setlist.songs && setlist.songs.length > 0) {
+            app.state.currentSetlist = setlist;
+            app.state.currentSetlistIndex = 0;
+
+            // Abre o player em modo Pro sem navegar forçadamente se já estiver em uma cifra
+            // Caso contrário, carrega a primeira cifra silenciosamente
+            const firstSongId = setlist.songs[0];
+            app.loadCifraSilent(firstSongId).then(() => {
+                app.toggleMusicPlayer(true);
+                app.toggleProPlayer(true);
+            });
+        } else {
+            app.modal({ title: 'Atenção', content: 'Nenhuma música com vídeo encontrada.', confirmText: 'OK', cancelText: null });
+        }
+    },
+
+    loadCifraSilent: async (id) => {
+        try {
+            const doc = await app.db.collection('cifras').doc(id).get();
+            if (doc.exists) {
+                app.state.currentCifra = { id: doc.id, ...doc.data() };
+            }
+        } catch (e) { console.error(e); }
+    },
+
+    toggleProPlayer: (forceState = null) => {
+        const modal = document.getElementById('music-player-modal');
+        const proContent = document.getElementById('pro-player-content');
+        if (!modal || !proContent) return;
+
+        const isPro = forceState !== null ? forceState : !modal.classList.contains('pro-mode');
+
+        if (isPro) {
+            modal.classList.add('pro-mode');
+            document.body.classList.add('player-active');
+            proContent.style.display = 'flex';
+            app.renderPlayerQueue();
+        } else {
+            modal.classList.remove('pro-mode');
+            document.body.classList.remove('player-active');
+            proContent.style.display = 'none';
+        }
+    },
+
+    renderPlayerQueue: () => {
+        const queueList = document.getElementById('player-queue-list');
+        if (!queueList || !app.state.currentSetlist) return;
+
+        const setlist = app.state.currentSetlist;
+        const currentIndex = app.state.currentSetlistIndex;
+
+        queueList.innerHTML = setlist.songs.map((songId, index) => {
+            const cifra = app.state.cifras.find(c => c.id === songId);
+            const title = cifra ? cifra.title : 'Carregando...';
+            const artist = cifra ? cifra.artist : '';
+            const active = index === currentIndex ? 'active' : '';
+
+            return `
+                <div class="queue-item ${active}" onclick="app.playFromQueue(${index})">
+                    <div style="font-size: 0.8rem; opacity: 0.6; min-width: 20px;">${index + 1}</div>
+                    <div style="flex:1">
+                        <div style="font-size: 0.95rem;">${title}</div>
+                        <div style="font-size: 0.75rem; opacity: 0.7;">${artist}</div>
+                    </div>
+                    ${active ? '<span>▶️</span>' : ''}
+                </div>
+            `;
+        }).join('');
+    },
+
+    playFromQueue: async (index) => {
+        if (!app.state.currentSetlist) return;
+        app.state.currentSetlistIndex = index;
+        const songId = app.state.currentSetlist.songs[index];
+
+        // Se estivermos na tela de cifra, navega. Se não, apenas troca o áudio.
+        if (app.state.currentView === 'cifra') {
+            app.navigate('cifra', songId);
+        } else {
+            await app.loadCifraSilent(songId);
+            app.toggleMusicPlayer(true);
+            app.renderPlayerQueue();
         }
     },
 
     openSetlist: async (id) => {
-        const setlist = app.state.setlists.find(s => s.id === id);
+        const setlist = app.getSetlist(id);
         if (setlist) {
             app.state.currentSetlist = setlist;
 
@@ -1483,30 +1666,135 @@ const app = {
                 reorderList.innerHTML = '<p style="color:var(--text-muted)">Nenhuma música neste repertório.</p>';
             } else {
                 reorderList.innerHTML = songs.map((s, i) => `
-                    <div class="sortable-item">
-                        <div style="flex:1; cursor:pointer;" onclick="app.navigate('cifra', '${s.id}'); app.state.currentSetlistIndex = ${i};">
-                            <span style="font-weight:bold; color:var(--primary-color);">${i + 1}.</span> ${s.title}
+                    <div class="sortable-item" data-id="${s.id}">
+                        <div style="padding: 0.5rem; color: var(--text-muted); cursor: grab; display: flex; align-items: center;" class="drag-handle">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="18" x2="16" y2="18"></line></svg>
                         </div>
+                        <div style="flex:1; cursor:pointer;" onclick="app.navigate('cifra', '${s.id}'); app.state.currentSetlistIndex = ${i};">
+                            <span style="font-weight:bold; color:var(--primary-color);" class="item-number">${i + 1}.</span> ${s.title}
+                        </div>
+                        ${!setlist.isBuiltin ? `
                         <div class="sort-controls">
-                            <button class="btn-sort" onclick="app.moveInSetlist(${i}, -1)" ${i === 0 ? 'disabled style="opacity:0.2"' : ''} title="Subir">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                            </button>
-                            <button class="btn-sort" onclick="app.moveInSetlist(${i}, 1)" ${i === songs.length - 1 ? 'disabled style="opacity:0.2"' : ''} title="Descer">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            </button>
                             <button class="btn-sort" style="color:var(--danger-color); margin-left: 0.5rem;" onclick="app.removeFromSetlist(${i})" title="Remover">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                         </div>
+                        ` : ''}
                     </div>
                 `).join('');
+
+                // Initialize Sortable if not builtin
+                if (!setlist.isBuiltin && typeof Sortable !== 'undefined') {
+                    if (app._sortable) app._sortable.destroy();
+                    app._sortable = new Sortable(reorderList, {
+                        animation: 150,
+                        handle: '.drag-handle',
+                        ghostClass: 'sortable-ghost',
+                        onEnd: () => {
+                            app.saveNewOrder();
+                        }
+                    });
+                }
+
+                // Load available songs
+                app.renderAvailableSongs();
             }
+        }
+    },
+
+    renderAvailableSongs: () => {
+        const list = document.getElementById('available-songs-list');
+        const searchInput = document.getElementById('available-songs-search');
+        if (!list || !app.state.currentSetlist) return;
+
+        const setlist = app.state.currentSetlist;
+        const currentIds = new Set(setlist.songs || []);
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+        // Filter: not in setlist AND matches search
+        const available = app.state.cifras.filter(c => {
+            const notInList = !currentIds.has(c.id);
+            const matchesSearch = c.title.toLowerCase().includes(searchTerm) || c.artist.toLowerCase().includes(searchTerm);
+            return notInList && matchesSearch;
+        });
+
+        if (available.length === 0) {
+            list.innerHTML = `<p style="color:var(--text-muted); padding: 1rem; text-align: center;">${searchTerm ? 'Nenhuma música encontrada.' : 'Todas as músicas já estão no repertório.'}</p>`;
+            return;
+        }
+
+        list.innerHTML = available.map(s => `
+            <div class="sortable-item" style="border-style: dotted; cursor: default;">
+                <div style="flex:1;">
+                    <span style="font-weight:600;">${s.title}</span>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">${s.artist}</div>
+                </div>
+                <button class="btn btn-outline btn-small" style="color: var(--primary-color); border-color: var(--primary-color); padding: 0.2rem 0.6rem;" 
+                        onclick="app.addFromOrganize('${s.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Incluir
+                </button>
+            </div>
+        `).join('');
+    },
+
+    addFromOrganize: async (songId) => {
+        const setlist = app.state.currentSetlist;
+        if (!setlist || setlist.isBuiltin) return;
+
+        try {
+            const doc = await app.db.collection('setlists').doc(setlist.id).get();
+            const songs = doc.data().songs || [];
+            if (!songs.includes(songId)) {
+                songs.push(songId);
+                await app.db.collection('setlists').doc(setlist.id).update({
+                    songs: songs,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update local state and refresh view
+                setlist.songs = songs;
+                app.openSetlist(setlist.id);
+                app.showToast('Música adicionada! ✨');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao adicionar.');
+        }
+    },
+
+    saveNewOrder: async () => {
+        const setlist = app.state.currentSetlist;
+        if (!setlist || setlist.isBuiltin) return;
+
+        const reorderList = document.getElementById('reorder-list');
+        const items = Array.from(reorderList.querySelectorAll('.sortable-item'));
+        const newSongIds = items.map(div => div.getAttribute('data-id'));
+
+        try {
+            await app.db.collection('setlists').doc(setlist.id).update({
+                songs: newSongIds,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Update local state numbers without full refresh
+            items.forEach((div, i) => {
+                const numSpan = div.querySelector('.item-number');
+                if (numSpan) numSpan.innerText = `${i + 1}.`;
+            });
+
+            // Update local state object
+            setlist.songs = newSongIds;
+            app.showToast('Ordem salva! ✨');
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao salvar nova ordem.');
         }
     },
 
     moveInSetlist: async (index, direction) => {
         const setlist = app.state.currentSetlist;
-        if (!setlist) return;
+        if (!setlist || setlist.isBuiltin) return;
 
         const songs = [...setlist.songs];
         const newIndex = index + direction;
@@ -1540,6 +1828,7 @@ const app = {
         if (!res) return;
 
         const setlist = app.state.currentSetlist;
+        if (!setlist || setlist.isBuiltin) return;
         const songs = [...setlist.songs];
         songs.splice(index, 1);
 
@@ -1569,21 +1858,39 @@ const app = {
         document.getElementById('setlist-pos').innerText = `${app.state.currentSetlistIndex + 1} de ${app.state.currentSetlist.songs.length}`;
     },
 
-    nextInSetlist: () => {
+    nextInSetlist: (stayInPlayer = false) => {
         if (!app.state.currentSetlist) return;
         if (app.state.currentSetlistIndex < app.state.currentSetlist.songs.length - 1) {
             app.state.currentSetlistIndex++;
-            app.navigate('cifra', app.state.currentSetlist.songs[app.state.currentSetlistIndex]);
+            const nextId = app.state.currentSetlist.songs[app.state.currentSetlistIndex];
+
+            if (stayInPlayer && app.musicPlayerActive && app.state.currentView !== 'cifra') {
+                app.loadCifraSilent(nextId).then(() => {
+                    app.toggleMusicPlayer(true);
+                    app.renderPlayerQueue();
+                });
+            } else {
+                app.navigate('cifra', nextId);
+            }
         } else {
             app.showToast('Fim do repertório');
         }
     },
 
-    prevInSetlist: () => {
+    prevInSetlist: (stayInPlayer = false) => {
         if (!app.state.currentSetlist) return;
         if (app.state.currentSetlistIndex > 0) {
             app.state.currentSetlistIndex--;
-            app.navigate('cifra', app.state.currentSetlist.songs[app.state.currentSetlistIndex]);
+            const prevId = app.state.currentSetlist.songs[app.state.currentSetlistIndex];
+
+            if (stayInPlayer && app.musicPlayerActive && app.state.currentView !== 'cifra') {
+                app.loadCifraSilent(prevId).then(() => {
+                    app.toggleMusicPlayer(true);
+                    app.renderPlayerQueue();
+                });
+            } else {
+                app.navigate('cifra', prevId);
+            }
         }
     },
 
