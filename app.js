@@ -1669,12 +1669,7 @@ const app = {
                                     style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--danger-color); background: rgba(239, 68, 68, 0.1); color: var(--danger-color); cursor: pointer; white-space: nowrap;">
                                     + Vídeo
                                 </button>
-                            ` : (cifra ? `
-                                <button onclick="event.stopPropagation(); app.addVideoToCifraPrompt('${cifra.id}')" 
-                                    style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.4); cursor: pointer; white-space: nowrap;" title="Trocar Vídeo">
-                                    ✏️ Link
-                                </button>
-                            ` : '')}
+                            ` : ''}
                         </div>
                         <div style="font-size: 0.75rem; opacity: 0.7;">${artist}</div>
                         ${!hasVideo && cifra ? `
