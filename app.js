@@ -439,6 +439,31 @@ const app = {
         }
     },
 
+    transposeNote: (note, amount) => {
+        const scale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const flatScale = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+        const preferred = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B'];
+
+        let idx = scale.indexOf(note);
+        if (idx === -1) idx = flatScale.indexOf(note);
+        if (idx === -1) return note;
+
+        let newIdx = (idx + amount) % 12;
+        if (newIdx < 0) newIdx += 12;
+        return preferred[newIdx];
+    },
+
+    transposeText: (text, amount) => {
+        if (!amount) return text;
+        return text.replace(/\[([A-G][#b]?)([^\]]*)\]/g, (match, p1, p2) => {
+            const newBase = app.transposeNote(p1, amount);
+            const newP2 = p2.replace(/\/([A-G][#b]?)/g, (m, bass) => {
+                return '/' + app.transposeNote(bass, amount);
+            });
+            return '[' + newBase + newP2 + ']';
+        });
+    },
+
     slugify: (text) => {
         return text.toString().toLowerCase().trim()
             .replace(/&/g, 'e') // Especial para Cifra Club (Henrique & Juliano -> henrique-e-juliano)
@@ -469,6 +494,14 @@ const app = {
 
         try {
             let baseUrl = directUrl;
+            let targetKeyShift = 0;
+
+            if (directUrl) {
+                const keyMatch = directUrl.match(/#key=(-?\d+)/);
+                if (keyMatch) {
+                    targetKeyShift = parseInt(keyMatch[1], 10);
+                }
+            }
 
             // Se não passou URL direta, gera a partir do nome/artista
             if (!baseUrl) {
@@ -478,12 +511,17 @@ const app = {
             } else {
                 // Limpeza básica da URL direta (remover query strings ou fragmentos se houver)
                 baseUrl = baseUrl.split('?')[0].split('#')[0];
-                if (!baseUrl.endsWith('/') && !baseUrl.endsWith('.html')) baseUrl += '/';
+                if (!baseUrl.endsWith('/') && !baseUrl.endsWith('.html') && !baseUrl.endsWith('.htm')) baseUrl += '/';
             }
 
             // Função para tentar buscar com diferentes proxies
             const fetchWithProxy = async (targetUrl) => {
                 const proxies = [
+                    {
+                        name: 'codetabs',
+                        url: `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(targetUrl)}`,
+                        parseResponse: async (res) => ({ contents: await res.text() })
+                    },
                     {
                         name: 'corsproxy.io',
                         url: `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
@@ -535,9 +573,9 @@ const app = {
 
             // --- NOVO: Verificar se existem várias versões ---
             // Se o link já for para a simplificada, não pergunta novamente
-            const isSimplifiedUrl = baseUrl.includes('simplificada.html');
+            const isSimplifiedUrl = baseUrl.includes('simplificada.html') || baseUrl.includes('simplificada.htm');
             const hasSimplified = !isSimplifiedUrl && (
-                data.contents.includes('simplificada.html') ||
+                data.contents.includes('simplificada.html') || data.contents.includes('simplificada.htm') ||
                 doc.querySelector('a[href*="simplificada"]') ||
                 doc.querySelector('li[data-version="Simplificada"]')
             );
@@ -578,11 +616,23 @@ const app = {
             tempDiv.innerHTML = formatted;
             let finalContent = tempDiv.innerText;
 
+            // Transpor conteúdo se houver key na URL
+            if (targetKeyShift !== 0) {
+                finalContent = app.transposeText(finalContent, targetKeyShift);
+            }
+
             // --- Tentar capturar Tom e Capo do Cifra Club ---
             const tomEl = doc.getElementById('cifra_tom');
             if (tomEl && document.getElementById('edit-tom')) {
                 const specificTom = tomEl.querySelector('b') || tomEl.querySelector('a') || tomEl;
                 let tomVal = specificTom.innerText.trim();
+                
+                if (targetKeyShift !== 0) {
+                    tomVal = tomVal.replace(/([A-G][#b]?)/g, (match) => {
+                        return app.transposeNote(match, targetKeyShift);
+                    });
+                }
+                
                 document.getElementById('edit-tom').value = tomVal;
             }
 
