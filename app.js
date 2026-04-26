@@ -1656,18 +1656,61 @@ const app = {
             const title = cifra ? cifra.title : 'Carregando...';
             const artist = cifra ? cifra.artist : '';
             const active = index === currentIndex ? 'active' : '';
+            const hasVideo = cifra && (app.extractYouTubeId(cifra.youtube) || app.extractYouTubeId(cifra.youtubeTraining));
 
             return `
-                <div class="queue-item ${active}" onclick="app.playFromQueue(${index})">
+                <div class="queue-item ${active}" onclick="app.playFromQueue(${index})" style="${hasVideo ? '' : 'border: 1px dashed var(--danger-color); opacity: 0.8;'}">
                     <div style="font-size: 0.8rem; opacity: 0.6; min-width: 20px;">${index + 1}</div>
-                    <div style="flex:1">
-                        <div style="font-size: 0.95rem;">${title}</div>
+                    <div style="flex:1; padding-right: 8px;">
+                        <div style="font-size: 0.95rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                            <span style="flex:1;">${title}</span>
+                            ${!hasVideo && cifra ? `
+                                <button onclick="event.stopPropagation(); app.addVideoToCifraPrompt('${cifra.id}')" 
+                                    style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--danger-color); background: rgba(239, 68, 68, 0.1); color: var(--danger-color); cursor: pointer; white-space: nowrap;">
+                                    + Vídeo
+                                </button>
+                            ` : ''}
+                        </div>
                         <div style="font-size: 0.75rem; opacity: 0.7;">${artist}</div>
+                        ${!hasVideo && cifra ? `
+                            <div style="margin-top: 4px; font-size: 0.7rem; color: var(--danger-color); opacity: 0.9;">
+                                Música sem vídeo atrelado
+                            </div>
+                        ` : ''}
                     </div>
-                    ${active ? '<span>▶️</span>' : ''}
+                    ${active && hasVideo ? '<span>▶️</span>' : ''}
                 </div>
             `;
         }).join('');
+    },
+
+    addVideoToCifraPrompt: async (songId) => {
+        const cifra = app.state.cifras.find(c => c.id === songId);
+        if (!cifra) return;
+        
+        const url = prompt(`Cole o link do YouTube para a música "${cifra.title}":`);
+        if (!url) return;
+        
+        const extractedId = app.extractYouTubeId(url);
+        if (!extractedId) {
+            app.showToast('Link do YouTube inválido!');
+            return;
+        }
+
+        try {
+            await app.db.collection('cifras').doc(songId).update({ youtube: url });
+            app.showToast('Vídeo salvo com sucesso!');
+            cifra.youtube = url;
+            app.renderPlayerQueue();
+            
+            if (app.state.currentCifra && app.state.currentCifra.id === songId) {
+                app.state.currentCifra.youtube = url;
+                if (app.musicPlayerActive) app.toggleMusicPlayer(true);
+            }
+        } catch(e) {
+            console.error('Erro ao salvar vídeo', e);
+            app.showToast('Erro ao salvar o vídeo.');
+        }
     },
 
     playFromQueue: async (index) => {
