@@ -1414,7 +1414,7 @@ const app = {
             return {
                 id: 'builtin-youtube',
                 name: '🎬 Playlist de Vídeos',
-                songs: app.state.cifras.filter(c => c.youtube).map(c => c.id),
+                songs: app.state.cifras.filter(c => c.ready).map(c => c.id),
                 isBuiltin: true
             };
         }
