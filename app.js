@@ -2083,8 +2083,11 @@ const app = {
                         <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()" title="Subir arquivo pequeno (< 700KB)">
                             Subir
                         </button>
-                        <input type="text" class="acc-url modal-input" value="${data.url}" placeholder="Ou cole o link (Drive, Dropbox, etc)" 
+                        <input type="text" class="acc-url modal-input" value="${data.url}" placeholder="Cole o link do Drive" 
                             style="margin:0; flex:1; font-size: 0.85rem; padding: 6px;" oninput="app.handleAccUrlInput(this, '${rowId}')">
+                        <button type="button" class="btn btn-outline btn-small" onclick="app.testAccAudio('${rowId}')" title="Testar áudio agora">
+                            ▶️
+                        </button>
                     </div>
                     <span id="${rowId}-status" style="font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
                         ${data.name || (data.url ? 'Link configurado' : 'Nenhum arquivo ou link')}
@@ -2108,11 +2111,18 @@ const app = {
         let url = input.value.trim();
         
         // Conversão automática de links do Google Drive
-        if (url.includes('drive.google.com/file/d/')) {
-            const match = url.match(/\/d\/(.+?)\//) || url.match(/\/d\/(.+)$/);
-            if (match && match[1]) {
-                const fileId = match[1].split('/')[0].split('?')[0];
-                url = `https://drive.google.com/uc?id=${fileId}`;
+        if (url.includes('drive.google.com')) {
+            const parts = url.split('/');
+            let fileId = '';
+            if (url.includes('/d/')) {
+                fileId = parts[parts.indexOf('d') + 1];
+            } else if (url.includes('id=')) {
+                fileId = url.split('id=')[1].split('&')[0];
+            }
+
+            if (fileId) {
+                // Novo formato mais robusto
+                url = `https://docs.google.com/uc?id=${fileId.split('?')[0].split('&')[0]}&export=download`;
                 input.value = url;
                 app.showToast('Link do Google Drive convertido! ⚡');
             }
@@ -2127,6 +2137,26 @@ const app = {
         if (statusSpan) statusSpan.innerText = 'Link configurado';
         
         app.updateAccompanimentsJSON();
+    },
+
+    testAccAudio: (rowId) => {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const url = row.querySelector('.acc-url').value;
+        if (!url) return app.showToast('Coloque um link primeiro!');
+
+        if (app.state.testAudio) {
+            app.state.testAudio.pause();
+            app.state.testAudio = null;
+        }
+
+        app.showToast('Testando áudio... 🎧');
+        const audio = new Audio(url);
+        app.state.testAudio = audio;
+        audio.play().catch(e => {
+            console.error('Falha no teste de áudio:', e);
+            alert('Falha ao tocar: O link não é um arquivo de áudio válido ou o acesso foi negado pelo Drive.');
+        });
     },
 
     removeAccompanimentRow: (id) => {
