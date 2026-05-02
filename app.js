@@ -1164,13 +1164,23 @@ const app = {
 
             // --- Accompaniments Preload ---
             if (data.accompaniments && data.accompaniments.length > 0) {
-                app.scrollState.accompaniments = data.accompaniments.map(acc => ({
-                    ...acc,
-                    audio: new Audio(acc.url),
-                    played: false
-                }));
-                // Preload audios
-                app.scrollState.accompaniments.forEach(acc => acc.audio.load());
+                app.scrollState.accompaniments = data.accompaniments.map(acc => {
+                    const audio = new Audio();
+                    audio.crossOrigin = "anonymous"; // Ajuda com CORS de links externos
+                    audio.src = acc.url;
+                    audio.preload = "auto";
+                    
+                    audio.onerror = (e) => {
+                        console.error(`Erro ao carregar áudio (${acc.name || 'Sem nome'}):`, acc.url);
+                        app.showToast(`Falha ao carregar áudio: ${acc.name || 'Acompanhamento'}`);
+                    };
+
+                    return {
+                        ...acc,
+                        audio: audio,
+                        played: false
+                    };
+                });
             } else {
                 app.scrollState.accompaniments = [];
             }
