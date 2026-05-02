@@ -1166,13 +1166,17 @@ const app = {
             if (data.accompaniments && data.accompaniments.length > 0) {
                 app.scrollState.accompaniments = data.accompaniments.map(acc => {
                     const audio = new Audio();
-                    audio.crossOrigin = "anonymous"; // Ajuda com CORS de links externos
+                    // Removido anonymous por padrão pois o Drive/Dropbox podem barrar
                     audio.src = acc.url;
                     audio.preload = "auto";
                     
                     audio.onerror = (e) => {
                         console.error(`Erro ao carregar áudio (${acc.name || 'Sem nome'}):`, acc.url);
-                        app.showToast(`Falha ao carregar áudio: ${acc.name || 'Acompanhamento'}`);
+                        // Tentativa de recarregar sem restrições se falhar
+                        if (audio.crossOrigin) {
+                            audio.removeAttribute('crossorigin');
+                            audio.load();
+                        }
                     };
 
                     return {
@@ -2105,11 +2109,12 @@ const app = {
         
         // Conversão automática de links do Google Drive
         if (url.includes('drive.google.com/file/d/')) {
-            const match = url.match(/\/d\/(.+?)\//);
+            const match = url.match(/\/d\/(.+?)\//) || url.match(/\/d\/(.+)$/);
             if (match && match[1]) {
-                url = `https://docs.google.com/uc?export=download&id=${match[1]}`;
+                const fileId = match[1].split('/')[0].split('?')[0];
+                url = `https://drive.google.com/uc?id=${fileId}`;
                 input.value = url;
-                app.showToast('Link do Google Drive convertido para Playback! ⚡');
+                app.showToast('Link do Google Drive convertido! ⚡');
             }
         }
         // Dropbox
