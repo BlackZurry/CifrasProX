@@ -41,6 +41,7 @@ const app = {
             }
             app.db = firebase.firestore();
             app.auth = firebase.auth();
+            app.storage = firebase.storage();
 
             // Ativar Persistência Offline do Firestore
             try {
@@ -1011,6 +1012,11 @@ const app = {
             }
 
             app.state.currentCifra = data;
+            
+            // Reset Playback Timer
+            app.scrollState.playbackStartTime = 0;
+            app.scrollState.lastPauseTime = 0;
+            
             document.getElementById('view-title').innerText = data.title;
             document.getElementById('view-artist').innerText = data.artist;
 
@@ -1154,6 +1160,19 @@ const app = {
                 setTimeout(() => {
                     app.toggleMusicPlayer(true);
                 }, 300);
+            }
+
+            // --- Accompaniments Preload ---
+            if (data.accompaniments && data.accompaniments.length > 0) {
+                app.scrollState.accompaniments = data.accompaniments.map(acc => ({
+                    ...acc,
+                    audio: new Audio(acc.url),
+                    played: false
+                }));
+                // Preload audios
+                app.scrollState.accompaniments.forEach(acc => acc.audio.load());
+            } else {
+                app.scrollState.accompaniments = [];
             }
 
         } catch (e) {
@@ -1310,6 +1329,13 @@ const app = {
 
         // Handle checkbox manual (FormData behavior with unchecked boxes varies or just needs explicit handling)
         data.ready = document.getElementById('edit-ready').checked;
+
+        // Accompaniments
+        try {
+            data.accompaniments = JSON.parse(data.accompaniments || '[]');
+        } catch(e) {
+            data.accompaniments = [];
+        }
 
         // Ensure proper types
         if (data.scrollSpeed) data.scrollSpeed = parseInt(data.scrollSpeed);
@@ -2011,9 +2037,123 @@ const app = {
         document.getElementById('edit-ready').checked = !!cifra.ready;
         document.getElementById('edit-tabs').value = cifra.tabs || '';
 
+        // Render Accompaniments
+        const accList = document.getElementById('edit-accompaniments-list');
+        if (accList) {
+            accList.innerHTML = '';
+            const accs = cifra.accompaniments || [];
+            accs.forEach(acc => app.addAccompanimentRow(acc));
+        }
+
         app.updateStrumPreview(strum);
         app.updateEditorChords();
         app.updateEditorPreview();
+    },
+
+    addAccompanimentRow: (data = { url: '', time: 0, name: '' }) => {
+        const list = document.getElementById('edit-accompaniments-list');
+        if (!list) return;
+
+        const rowId = 'acc-' + Date.now() + Math.random().toString(36).substr(2, 5);
+        const div = document.createElement('div');
+        div.className = 'accompaniment-row';
+        div.id = rowId;
+        div.style.cssText = 'display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.02); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap;';
+
+        div.innerHTML = `
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Arquivo de Áudio</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="file" accept="audio/*" onchange="app.uploadAudio(event, '${rowId}')" style="display: none;" id="${rowId}-file">
+                    <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()">
+                        ${data.url ? 'Trocar Áudio' : 'Selecionar Arquivo'}
+                    </button>
+                    <span id="${rowId}-status" style="font-size: 0.85rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;">
+                        ${data.name || (data.url ? 'Arquivo carregado' : 'Nenhum selecionado')}
+                    </span>
+                    <input type="hidden" class="acc-url" value="${data.url}">
+                    <input type="hidden" class="acc-name" value="${data.name || ''}">
+                </div>
+            </div>
+            <div style="width: 100px;">
+                <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Tempo (s)</label>
+                <input type="number" class="acc-time modal-input" value="${data.time}" min="0" step="1" oninput="app.updateAccompanimentsJSON()" style="padding: 4px 8px; height: 36px; margin: 0;">
+            </div>
+            <button type="button" class="btn btn-outline btn-small" style="color: var(--danger-color); border-color: var(--danger-color); margin-top: 1.2rem;" onclick="app.removeAccompanimentRow('${rowId}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        `;
+        list.appendChild(div);
+        app.updateAccompanimentsJSON();
+    },
+
+    removeAccompanimentRow: (id) => {
+        const row = document.getElementById(id);
+        if (row) {
+            row.remove();
+            app.updateAccompanimentsJSON();
+        }
+    },
+
+    uploadAudio: async (event, rowId) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const statusSpan = document.getElementById(`${rowId}-status`);
+        const row = document.getElementById(rowId);
+        if (!statusSpan || !row) return;
+
+        // Limite de 700KB para garantir que o documento do Firestore (1MB) não estoure
+        if (file.size > 700 * 1024) {
+            alert('Arquivo muito grande! Para salvar no banco de dados, o áudio deve ter menos de 700KB. Tente um MP3 mais curto ou com qualidade menor.');
+            return;
+        }
+
+        const originalText = statusSpan.innerText;
+        statusSpan.innerText = '⌛ Processando...';
+        statusSpan.style.color = 'var(--primary-color)';
+
+        try {
+            console.log(`Convertendo para Base64: ${file.name} (${file.size} bytes)`);
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64Data = e.target.result;
+                
+                statusSpan.innerText = file.name;
+                statusSpan.style.color = 'var(--text-color)';
+                row.querySelector('.acc-url').value = base64Data;
+                row.querySelector('.acc-name').value = file.name;
+                
+                app.updateAccompanimentsJSON();
+                app.showToast('Áudio processado com sucesso! 🎵');
+            };
+            reader.onerror = () => {
+                throw new Error('Erro ao ler o arquivo.');
+            };
+            reader.readAsDataURL(file);
+
+        } catch (e) {
+            console.error('Erro no processamento do áudio:', e);
+            statusSpan.innerText = '❌ Erro';
+            statusSpan.style.color = 'var(--danger-color)';
+            alert('Erro ao processar áudio: ' + e.message);
+        }
+    },
+
+    updateAccompanimentsJSON: () => {
+        const list = document.getElementById('edit-accompaniments-list');
+        const hiddenInput = document.getElementById('edit-accompaniments-json');
+        if (!list || !hiddenInput) return;
+
+        const rows = list.querySelectorAll('.accompaniment-row');
+        const data = Array.from(rows).map(row => ({
+            url: row.querySelector('.acc-url').value,
+            name: row.querySelector('.acc-name').value,
+            time: parseInt(row.querySelector('.acc-time').value) || 0
+        })).filter(acc => acc.url); // Only those with URL
+
+        hiddenInput.value = JSON.stringify(data);
     },
 
     updateEditorChords: () => {
@@ -2525,7 +2665,9 @@ const app = {
         active: false,
         speed: 30,
         lastTime: 0,
-        accumulator: 0
+        accumulator: 0,
+        playbackStartTime: 0,
+        accompaniments: [] // List of {url, time, audioObj, played}
     },
 
     toggleScroll: () => {
@@ -2539,6 +2681,27 @@ const app = {
             iconPlay.style.display = 'none';
             iconPause.style.display = 'block';
             btn.classList.add('btn-primary');
+
+            if (app.scrollState.playbackStartTime === 0) {
+                app.scrollState.playbackStartTime = performance.now();
+                // Reset played status for accompaniments
+                app.scrollState.accompaniments.forEach(acc => {
+                    acc.played = false;
+                    acc.audio.currentTime = 0;
+                });
+            } else {
+                // Resume from where we were
+                // We need to calculate how much time was "paused"
+                const pausedTime = performance.now() - app.scrollState.lastPauseTime;
+                app.scrollState.playbackStartTime += pausedTime;
+                
+                // Resume any currently playing audios
+                app.scrollState.accompaniments.forEach(acc => {
+                    if (acc.played && acc.audio.currentTime > 0 && acc.audio.currentTime < acc.audio.duration) {
+                        acc.audio.play();
+                    }
+                });
+            }
 
             // Auto-scroll to Strumming/Content if at top
             const diff = window.scrollY; // Current scroll
@@ -2556,12 +2719,23 @@ const app = {
                     }
                 }, 300); // Increased delay for mobile robustness
             }
+            
+            // Show timer
+            const timerDiv = document.getElementById('playback-timer');
+            if (timerDiv) timerDiv.style.display = 'block';
 
             requestAnimationFrame(app.scrollLoop);
         } else {
             iconPlay.style.display = 'block';
             iconPause.style.display = 'none';
             btn.classList.add('btn-primary');
+
+            // Pause accompaniments
+            app.scrollState.accompaniments.forEach(acc => {
+                if (acc.audio && !acc.audio.paused) acc.audio.pause();
+            });
+            app.scrollState.lastPauseTime = performance.now();
+
             // Limpa countdown se existir
             if (app.scrollState.currentInterval) {
                 clearInterval(app.scrollState.currentInterval);
@@ -2569,6 +2743,9 @@ const app = {
             }
             const div = document.getElementById('loop-countdown');
             if (div) div.style.display = 'none';
+
+            const timerDiv = document.getElementById('playback-timer');
+            if (timerDiv) timerDiv.style.display = 'none';
         }
     },
 
@@ -2599,12 +2776,37 @@ const app = {
                 return;
             }
         }
+        app.updatePlaybackTimer();
         app.checkTriggers();
         requestAnimationFrame(app.scrollLoop);
     },
 
+    updatePlaybackTimer: () => {
+        const timerDiv = document.getElementById('playback-timer');
+        if (!timerDiv || !app.scrollState.active) return;
+
+        const elapsed = (performance.now() - app.scrollState.playbackStartTime) / 1000;
+        const mins = Math.floor(elapsed / 60);
+        const secs = Math.floor(elapsed % 60);
+        timerDiv.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    },
+
     checkTriggers: () => {
         app.checkPause();
+        app.checkAccompaniments();
+    },
+
+    checkAccompaniments: () => {
+        if (!app.scrollState.active) return;
+        const elapsed = (performance.now() - app.scrollState.playbackStartTime) / 1000;
+
+        app.scrollState.accompaniments.forEach(acc => {
+            if (!acc.played && elapsed >= acc.time) {
+                acc.played = true;
+                acc.audio.play().catch(e => console.warn('Falha ao tocar acompanhamento:', e));
+                console.log(`Disparando acompanhamento: ${acc.name} aos ${acc.time}s (Real: ${elapsed.toFixed(2)}s)`);
+            }
+        });
     },
 
     checkPause: () => {

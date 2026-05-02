@@ -53,6 +53,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // Ignorar requisições para o Firebase Storage para evitar conflitos de CORS e cache
+    if (event.request.url.includes('firebasestorage.googleapis.com')) {
+        return; // Deixa o navegador lidar normalmente (bypass SW)
+    }
+
     event.respondWith(
         caches.match(event.request).then((response) => {
             // Retorna o cache se encontrar, senão vai para a rede
