@@ -2058,20 +2058,23 @@ const app = {
         const div = document.createElement('div');
         div.className = 'accompaniment-row';
         div.id = rowId;
-        div.style.cssText = 'display: flex; gap: 1rem; align-items: center; background: rgba(0,0,0,0.02); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap;';
+        div.style.cssText = 'display: flex; gap: 1rem; align-items: flex-start; background: rgba(0,0,0,0.02); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap;';
 
         div.innerHTML = `
-            <div style="flex: 1; min-width: 200px;">
-                <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Arquivo de Áudio</label>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <input type="file" accept="audio/*" onchange="app.uploadAudio(event, '${rowId}')" style="display: none;" id="${rowId}-file">
-                    <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()">
-                        ${data.url ? 'Trocar Áudio' : 'Selecionar Arquivo'}
-                    </button>
-                    <span id="${rowId}-status" style="font-size: 0.85rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;">
-                        ${data.name || (data.url ? 'Arquivo carregado' : 'Nenhum selecionado')}
+            <div style="flex: 1; min-width: 250px;">
+                <label style="font-size: 0.75rem; margin-bottom: 4px; display: block;">Arquivo ou Link do Áudio</label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="file" accept="audio/*" onchange="app.uploadAudio(event, '${rowId}')" style="display: none;" id="${rowId}-file">
+                        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()" title="Subir arquivo pequeno (< 700KB)">
+                            Subir
+                        </button>
+                        <input type="text" class="acc-url modal-input" value="${data.url}" placeholder="Ou cole o link (Drive, Dropbox, etc)" 
+                            style="margin:0; flex:1; font-size: 0.85rem; padding: 6px;" oninput="app.handleAccUrlInput(this, '${rowId}')">
+                    </div>
+                    <span id="${rowId}-status" style="font-size: 0.75rem; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                        ${data.name || (data.url ? 'Link configurado' : 'Nenhum arquivo ou link')}
                     </span>
-                    <input type="hidden" class="acc-url" value="${data.url}">
                     <input type="hidden" class="acc-name" value="${data.name || ''}">
                 </div>
             </div>
@@ -2084,6 +2087,30 @@ const app = {
             </button>
         `;
         list.appendChild(div);
+        app.updateAccompanimentsJSON();
+    },
+
+    handleAccUrlInput: (input, rowId) => {
+        let url = input.value.trim();
+        
+        // Conversão automática de links do Google Drive
+        if (url.includes('drive.google.com/file/d/')) {
+            const match = url.match(/\/d\/(.+?)\//);
+            if (match && match[1]) {
+                url = `https://docs.google.com/uc?export=download&id=${match[1]}`;
+                input.value = url;
+                app.showToast('Link do Google Drive convertido para Playback! ⚡');
+            }
+        }
+        // Dropbox
+        if (url.includes('dropbox.com') && url.endsWith('?dl=0')) {
+            url = url.replace('?dl=0', '?dl=1');
+            input.value = url;
+        }
+
+        const statusSpan = document.getElementById(`${rowId}-status`);
+        if (statusSpan) statusSpan.innerText = 'Link configurado';
+        
         app.updateAccompanimentsJSON();
     },
 
