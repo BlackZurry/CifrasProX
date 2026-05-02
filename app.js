@@ -2770,10 +2770,9 @@ const app = {
             window.scrollBy(0, integers);
             app.scrollState.accumulator -= integers;
 
-            // Check if end of page reached
+            // Check if end of page reached - No longer auto-stops to allow timer/audio to continue
             if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 2)) {
-                app.toggleScroll();
-                return;
+                // Just let it stay active until manual pause
             }
         }
         app.updatePlaybackTimer();
