@@ -823,20 +823,22 @@ textarea {
 }
 
 #loop-countdown {
-    position: fixed;
-    bottom: 85px;
-    right: 20px;
     white-space: nowrap;
-    background: #1e293b;
-    color: white;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 90;
+    background: rgba(26, 46, 37, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-family: 'Inter', monospace;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    z-index: 100;
     pointer-events: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
     animation: fadeInSlide 0.3s ease-out;
 }
 
@@ -1912,4 +1914,29 @@ body.dark-mode .premium-slider:before {
     .player-queue-container {
         max-height: 40vh;
     }
+}
+
+/* Accompaniment countdown styles on playback-timer */
+#playback-timer.cue-blue {
+    background: rgba(30, 58, 138, 0.9) !important;
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
+    text-shadow: 0 0 5px rgba(59, 130, 246, 0.8) !important;
+}
+
+#playback-timer.cue-yellow {
+    background: rgba(120, 80, 0, 0.9) !important;
+    border-color: #eab308 !important;
+    color: #eab308 !important;
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.6) !important;
+    text-shadow: 0 0 5px rgba(234, 179, 8, 0.8) !important;
+}
+
+#playback-timer.cue-red {
+    background: rgba(153, 27, 27, 0.9) !important;
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+    text-shadow: 0 0 5px rgba(239, 68, 68, 0.8) !important;
 }
