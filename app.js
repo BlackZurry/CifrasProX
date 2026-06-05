@@ -495,12 +495,14 @@ const app = {
 
         try {
             let baseUrl = directUrl;
-            let targetKeyShift = 0;
+            // targetKeyIndex: índice do tom alvo conforme Cifra Club (#key=N)
+            // 0=C, 1=C#/Db, 2=D, 3=D#/Eb, 4=E, 5=F, 6=F#/Gb, 7=G, 8=G#/Ab, 9=A, 10=A#/Bb, 11=B
+            let targetKeyIndex = null;
 
             if (directUrl) {
                 const keyMatch = directUrl.match(/#key=(-?\d+)/);
                 if (keyMatch) {
-                    targetKeyShift = parseInt(keyMatch[1], 10);
+                    targetKeyIndex = parseInt(keyMatch[1], 10);
                 }
             }
 
@@ -618,6 +620,33 @@ const app = {
             let finalContent = tempDiv.innerText;
 
             // Transpor conteúdo se houver key na URL
+            // O #key=N do Cifra Club indica o ÍNDICE do tom alvo (0=C, 1=C#, 2=D, 3=Eb...)
+            // Para transpor corretamente, precisamos saber o tom original da cifra e calcular a diferença.
+            const keyScale = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+            let targetKeyShift = 0;
+
+            if (targetKeyIndex !== null) {
+                // Tenta ler o tom original da página
+                const tomElRaw = doc.getElementById('cifra_tom');
+                if (tomElRaw) {
+                    const tomRaw = (tomElRaw.querySelector('b') || tomElRaw.querySelector('a') || tomElRaw).innerText.trim();
+                    // Normaliza o tom (ex: "D#" → "Eb", etc.) para encontrar no array
+                    const normalizeKey = (k) => {
+                        const aliases = { 'C#': 'C#', 'Db': 'C#', 'D#': 'Eb', 'Eb': 'Eb', 'F#': 'F#', 'Gb': 'F#', 'G#': 'Ab', 'Ab': 'Ab', 'A#': 'Bb', 'Bb': 'Bb' };
+                        const root = k.match(/^[A-G][#b]?/)?.[0] || k;
+                        return aliases[root] || root;
+                    };
+                    const originalNorm = normalizeKey(tomRaw);
+                    const originalIdx = keyScale.indexOf(originalNorm);
+                    if (originalIdx !== -1) {
+                        targetKeyShift = ((targetKeyIndex - originalIdx) + 12) % 12;
+                    }
+                } else {
+                    // Se não achou o tom na página, usa #key como shift direto (comportamento antigo)
+                    targetKeyShift = targetKeyIndex;
+                }
+            }
+
             if (targetKeyShift !== 0) {
                 finalContent = app.transposeText(finalContent, targetKeyShift);
             }
@@ -627,13 +656,13 @@ const app = {
             if (tomEl && document.getElementById('edit-tom')) {
                 const specificTom = tomEl.querySelector('b') || tomEl.querySelector('a') || tomEl;
                 let tomVal = specificTom.innerText.trim();
-                
+
                 if (targetKeyShift !== 0) {
                     tomVal = tomVal.replace(/([A-G][#b]?)/g, (match) => {
                         return app.transposeNote(match, targetKeyShift);
                     });
                 }
-                
+
                 document.getElementById('edit-tom').value = tomVal;
             }
 
