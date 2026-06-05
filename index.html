@@ -334,13 +334,12 @@
             <div class="cifra-content hidden" id="view-tabs"
                 style="font-family: monospace; font-size: 18px; white-space: pre; overflow-x: auto;"></div>
 
-            <!-- Autoscroll Controls -->
-            <div id="loop-countdown" style="display:none;">
-                Voltando em <span id="loop-seconds">0</span>s...
-            </div>
-
             <div id="scroll-controls"
                 style="position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 12px; align-items: center; z-index: 100;">
+
+                <div id="loop-countdown" style="display:none;">
+                    <span id="loop-seconds">0</span>
+                </div>
 
                 <div id="playback-timer"
                     style="background: rgba(26, 46, 37, 0.85); backdrop-filter: blur(8px); padding: 6px 14px; border-radius: 12px; border: 1px solid var(--primary-color); color: var(--primary-color); font-weight: 700; font-family: 'Inter', monospace; display: none; box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); font-size: 1rem; letter-spacing: 1px; text-shadow: 0 0 5px rgba(16, 185, 129, 0.5);">
