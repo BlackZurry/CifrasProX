@@ -2817,7 +2817,10 @@ const app = {
             if (div) div.style.display = 'none';
 
             const timerDiv = document.getElementById('playback-timer');
-            if (timerDiv) timerDiv.style.display = 'none';
+            if (timerDiv) {
+                timerDiv.style.display = 'none';
+                timerDiv.classList.remove('cue-blue', 'cue-yellow', 'cue-red');
+            }
         }
     },
 
@@ -2860,6 +2863,36 @@ const app = {
         const mins = Math.floor(elapsed / 60);
         const secs = Math.floor(elapsed % 60);
         timerDiv.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        // Check for upcoming accompaniments within 3 seconds
+        let activeCue = null;
+        if (app.scrollState.accompaniments && app.scrollState.accompaniments.length > 0) {
+            let minTimeDiff = Infinity;
+            app.scrollState.accompaniments.forEach(acc => {
+                if (!acc.played) {
+                    const diff = acc.time - elapsed;
+                    if (diff > 0 && diff < minTimeDiff) {
+                        minTimeDiff = diff;
+                    }
+                }
+            });
+
+            if (minTimeDiff <= 3.0) {
+                if (minTimeDiff > 2.0) {
+                    activeCue = 'cue-blue';
+                } else if (minTimeDiff > 1.0) {
+                    activeCue = 'cue-yellow';
+                } else if (minTimeDiff > 0.0) {
+                    activeCue = 'cue-red';
+                }
+            }
+        }
+
+        // Apply class
+        timerDiv.classList.remove('cue-blue', 'cue-yellow', 'cue-red');
+        if (activeCue) {
+            timerDiv.classList.add(activeCue);
+        }
     },
 
     checkTriggers: () => {
@@ -2919,8 +2952,8 @@ const app = {
         if (!div || !span) return;
 
         let remaining = seconds;
-        div.style.display = 'block';
-        div.innerHTML = `${label} <span id="loop-seconds">${remaining}</span>s...`;
+        div.style.display = 'flex';
+        div.innerHTML = `<span id="loop-seconds">${remaining}</span>`;
 
         const interval = setInterval(() => {
             remaining--;
