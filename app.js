@@ -2965,10 +2965,44 @@ const app = {
 
                 if (delaySeconds <= 0) return;
 
-                app.scrollState.active = false; // Pause
+                // Pausa o scroll e sincroniza o botão na UI
+                app.scrollState.active = false;
+                app.scrollState.lastPauseTime = performance.now();
+
+                // Pausar acompanhamentos
+                app.scrollState.accompaniments.forEach(acc => {
+                    if (acc.audio && !acc.audio.paused) acc.audio.pause();
+                });
+
+                // Atualiza ícones do botão para refletir estado pausado
+                const iconPlay = document.getElementById('icon-play');
+                const iconPause = document.getElementById('icon-pause');
+                const btn = document.getElementById('btn-scroll-toggle');
+                if (iconPlay) iconPlay.style.display = 'block';
+                if (iconPause) iconPause.style.display = 'none';
+                if (btn) btn.classList.remove('btn-primary');
+
                 app.startCountdown(delaySeconds, 'Pausado em', () => {
+                    // Retoma o scroll e sincroniza o botão
                     app.scrollState.active = true;
                     app.scrollState.lastTime = performance.now();
+
+                    // Recalcula tempo pausado para acompanhamentos
+                    const pausedTime = performance.now() - app.scrollState.lastPauseTime;
+                    app.scrollState.playbackStartTime += pausedTime;
+
+                    // Retoma acompanhamentos que estavam tocando
+                    app.scrollState.accompaniments.forEach(acc => {
+                        if (acc.played && acc.audio.currentTime > 0 && acc.audio.currentTime < acc.audio.duration) {
+                            acc.audio.play();
+                        }
+                    });
+
+                    // Atualiza ícones do botão para refletir estado em play
+                    if (iconPlay) iconPlay.style.display = 'none';
+                    if (iconPause) iconPause.style.display = 'block';
+                    if (btn) btn.classList.add('btn-primary');
+
                     requestAnimationFrame(app.scrollLoop);
                 });
             }
