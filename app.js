@@ -2796,12 +2796,7 @@ const app = {
                 const pausedTime = performance.now() - app.scrollState.lastPauseTime;
                 app.scrollState.playbackStartTime += pausedTime;
                 
-                // Resume any currently playing audios
-                app.scrollState.accompaniments.forEach(acc => {
-                    if (acc.played && acc.audio.currentTime > 0 && acc.audio.currentTime < acc.audio.duration) {
-                        acc.audio.play();
-                    }
-                });
+                // Acompanhamentos não são pausados pelo scroll, então não precisam ser retomados aqui.
             }
 
             // Auto-scroll to Strumming/Content if at top
@@ -2831,10 +2826,8 @@ const app = {
             iconPause.style.display = 'none';
             btn.classList.add('btn-primary');
 
-            // Pause accompaniments
-            app.scrollState.accompaniments.forEach(acc => {
-                if (acc.audio && !acc.audio.paused) acc.audio.pause();
-            });
+            // Nota: acompanhamentos de áudio NÃO são pausados pelo botão de pausa do scroll.
+            // Eles rodam de forma independente durante toda a execução.
             app.scrollState.lastPauseTime = performance.now();
 
             // Limpa countdown se existir
@@ -2969,10 +2962,8 @@ const app = {
                 app.scrollState.active = false;
                 app.scrollState.lastPauseTime = performance.now();
 
-                // Pausar acompanhamentos
-                app.scrollState.accompaniments.forEach(acc => {
-                    if (acc.audio && !acc.audio.paused) acc.audio.pause();
-                });
+                // Nota: acompanhamentos de áudio NÃO são pausados pela pausa de rolagem.
+                // O áudio da introdução (e outros) continua tocando normalmente.
 
                 // Atualiza ícones do botão para refletir estado pausado
                 const iconPlay = document.getElementById('icon-play');
@@ -2991,12 +2982,7 @@ const app = {
                     const pausedTime = performance.now() - app.scrollState.lastPauseTime;
                     app.scrollState.playbackStartTime += pausedTime;
 
-                    // Retoma acompanhamentos que estavam tocando
-                    app.scrollState.accompaniments.forEach(acc => {
-                        if (acc.played && acc.audio.currentTime > 0 && acc.audio.currentTime < acc.audio.duration) {
-                            acc.audio.play();
-                        }
-                    });
+                    // Acompanhamentos não foram pausados, então não precisam ser retomados aqui.
 
                     // Atualiza ícones do botão para refletir estado em play
                     if (iconPlay) iconPlay.style.display = 'none';
