@@ -2109,7 +2109,7 @@ const app = {
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <input type="file" accept="audio/*" onchange="app.uploadAudio(event, '${rowId}')" style="display: none;" id="${rowId}-file">
-                        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()" title="Subir arquivo pequeno (< 700KB)">
+                        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('${rowId}-file').click()" title="Subir arquivo de áudio (< 20MB)">
                             Subir
                         </button>
                         <input type="text" class="acc-url modal-input" value="${data.url}" placeholder="Cole o link do Drive" 
@@ -2204,41 +2204,41 @@ const app = {
         const row = document.getElementById(rowId);
         if (!statusSpan || !row) return;
 
-        // Limite de 700KB para garantir que o documento do Firestore (1MB) não estoure
-        if (file.size > 700 * 1024) {
-            alert('Arquivo muito grande! Para salvar no banco de dados, o áudio deve ter menos de 700KB. Tente um MP3 mais curto ou com qualidade menor.');
+        // Limite expandido para 20MB já que agora salvamos no Storage e não no banco de dados
+        if (file.size > 20 * 1024 * 1024) {
+            alert('Arquivo muito grande! O limite para envio de áudio é de 20MB.');
             return;
         }
 
         const originalText = statusSpan.innerText;
-        statusSpan.innerText = '⌛ Processando...';
+        statusSpan.innerText = '⌛ Enviando para nuvem...';
         statusSpan.style.color = 'var(--primary-color)';
 
         try {
-            console.log(`Convertendo para Base64: ${file.name} (${file.size} bytes)`);
+            console.log(`Enviando para o Firebase Storage: ${file.name} (${file.size} bytes)`);
             
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const base64Data = e.target.result;
-                
-                statusSpan.innerText = file.name;
-                statusSpan.style.color = 'var(--text-color)';
-                row.querySelector('.acc-url').value = base64Data;
-                row.querySelector('.acc-name').value = file.name;
-                
-                app.updateAccompanimentsJSON();
-                app.showToast('Áudio processado com sucesso! 🎵');
-            };
-            reader.onerror = () => {
-                throw new Error('Erro ao ler o arquivo.');
-            };
-            reader.readAsDataURL(file);
+            // Cria um nome único e seguro para o arquivo
+            const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+            const storageRef = app.storage.ref();
+            const audioRef = storageRef.child(`accompaniments/${Date.now()}_${safeName}`);
+            
+            // Faz o upload para o Storage
+            const snapshot = await audioRef.put(file);
+            const downloadUrl = await snapshot.ref.getDownloadURL();
+            
+            statusSpan.innerText = file.name;
+            statusSpan.style.color = 'var(--text-color)';
+            row.querySelector('.acc-url').value = downloadUrl; // Salva o link do Storage, não o Base64!
+            row.querySelector('.acc-name').value = file.name;
+            
+            app.updateAccompanimentsJSON();
+            app.showToast('Áudio salvo na nuvem com sucesso! 🎵');
 
         } catch (e) {
-            console.error('Erro no processamento do áudio:', e);
-            statusSpan.innerText = '❌ Erro';
+            console.error('Erro no upload do áudio para o Storage:', e);
+            statusSpan.innerText = '❌ Erro no envio';
             statusSpan.style.color = 'var(--danger-color)';
-            alert('Erro ao processar áudio: ' + e.message);
+            alert('Erro ao enviar o áudio: ' + e.message);
         }
     },
 
