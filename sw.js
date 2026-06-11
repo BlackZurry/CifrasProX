@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cifraprox-v39';
+const CACHE_NAME = 'cifraprox-v40';
 const ASSETS = [
     './',
     './index.html',
@@ -62,7 +62,13 @@ self.addEventListener('fetch', (event) => {
         caches.match(event.request).then((response) => {
             // Retorna o cache se encontrar, senão vai para a rede
             return response || fetch(event.request).then((networkResponse) => {
-                // Opcional: Você poderia colocar recursos dinâmicos no cache aqui
+                // Se for um arquivo de áudio ou estiver na pasta audios, coloca no cache automaticamente para ficar offline!
+                if (event.request.url.includes('/audios/') || event.request.url.endsWith('.mp3')) {
+                    const responseClone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                }
                 return networkResponse;
             });
         }).catch(() => {
